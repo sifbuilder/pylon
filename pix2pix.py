@@ -114,7 +114,7 @@ onlllyas = Onlllyas()
 
 def getap():
     cp = {
-        "primecmd": 'nndanboo',
+        "primecmd": 'nndanboo', # 'nncrys', # 
 
         "MNAME": "pix2pix",
         "AUTHOR": "tensorflow2",
@@ -159,7 +159,7 @@ def getap():
         "input_channels": 3,
         "output_channels": 3,
         "epochs": 200,
-        "n_iterations": 10, # iters for snapshot
+        "n_iterations": 1, # iters for snapshot
 
         # dataset.py args
         "input_folder": './input/',
@@ -489,6 +489,7 @@ class GAN(object):
         print(f'|===> model.restore_checkpoint \n \
             self.checkpoint: {self.checkpoint} \n \
             self.ckpt_dir: {self.ckpt_dir} \n \
+            self.ckpt_prefix = {self.ckpt_prefix} \n \
             max_to_keep: {max_to_keep} \n \
         ')
 
@@ -1626,13 +1627,13 @@ def nncrys(args, kwargs):
         assert(os.path.exists(args.dataorg_dir))
 
         args.ckpt_dir = args.models_dir
-        args.ckpt_prefix = os.path.join(args.ckpt_dir, "ckpt")
+        args.ckpt_prefix = os.path.join(args.ckpt_dir, "chk")   # ckpt
 
-        ''' data '''
         args.data_train_dir = os.path.join(args.data_dir, 'train_dir')
         args.data_test_dir = os.path.join(args.data_dir, 'test_dir')
 
-        ''' dataset '''
+        args.prediction_dir = os.path.join(args.proj_dir, 'my_prediction') # in project dir
+
         args.dataset_train_B_dir = os.path.join(args.dataset_dir, 'train_B')
         args.dataset_train_A_dir = os.path.join(args.dataset_dir, 'train_A')
         args.dataset_test_B_dir = os.path.join(args.dataset_dir, 'test_B')
@@ -1653,6 +1654,8 @@ def nncrys(args, kwargs):
         os.makedirs(args.models_dir, exist_ok=True)
         os.makedirs(args.logs_dir, exist_ok=True)
         os.makedirs(args.tmp_dir, exist_ok=True)
+        os.makedirs(args.records_dir, exist_ok=True)
+        os.makedirs(args.prediction_dir, exist_ok=True)
 
 
     if args.verbose: print(f"|---> nncrys tree: {args.PROJECT}:  \n \
@@ -1809,6 +1812,7 @@ def nncrys(args, kwargs):
         else:
             print(f"|---> nothing copied. {args.output_folder} not empty")
 
+
     if 1: # canny to dataset A ((train, test)B => (train, test)A)
 
         args.keep_folder=True    
@@ -1931,35 +1935,36 @@ def nncrys(args, kwargs):
         for elem in iter:
             #itemlist = list(elem)
             example_input, example_target = elem
-            print(type(example_input))
-            print(type(example_target))
-            display_list = [
-                example_input,
-                example_target,
-            ]
+            if args.verbose:
+                print(f'|---> probe train dataset {type(example_input)} {type(example_target)} ')
+            img1 = onformat.nnba_to_rgb(example_input)
+            img2 = onformat.nnba_to_rgb(example_target)
+                      
+            display_list = [img1, img2]
             onplot.pil_show_rgbs(display_list, scale=1, rows=1) 
 
-    # if 1: #   	data => tfrecords
+    if 1: #   	data => tfrecords
 
-    # 	print(f"|---> data to tfrecords:   \n \
-    # 	from: {args.dataset_train_A_dir} \n \
-    # 		to args.records_dir: {args.records_dir} \n \
-    # 	")		
-    # 	# <class 'numpy.ndarray'> (512, 1024, 3)
-    # 	onrecord.folder_to_tfrecords(
-    # 		args.dataset_train_A_dir, 
-    # 		args.records_dir)
+        print(f"|---> data to tfrecords:   \n \
+        from: {args.dataset_train_A_dir} \n \
+            to args.records_dir: {args.records_dir} \n \
+        ")		
+        # <class 'numpy.ndarray'> (512, 1024, 3)
+        onrecord.folder_to_tfrecords(
+            args.dataset_train_A_dir, 
+            args.records_dir)
 
     if 1: # 	model
 
         print(f"|---> get model:   \n ")		
         model = GAN( 
-                models_dir = args.models_dir,
-                logs_dir = args.logs_dir,
-                ckpt_dir = args.ckpt_dir,
-                ckpt_prefix = args.ckpt_prefix,
-                input_shape = args.input_shape,
-                output_shape = args.input_shape,
+            models_dir = args.models_dir,
+            logs_dir = args.logs_dir,
+            prediction_dir = args.prediction_dir,
+            ckpt_dir = args.ckpt_dir,
+            ckpt_prefix = args.ckpt_prefix,
+            input_shape = args.input_shape,
+            output_shape = args.input_shape,
         )
 
     if 0: #  	colab
