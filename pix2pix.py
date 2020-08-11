@@ -1022,9 +1022,6 @@ def nndanboo(args, kwargs):
     if 1: # tree
         # [1] https://github.com/lllyasviel/DanbooRegion
         # [2] https://drive.google.com/drive/folders/1ihLt6P7UQRlaFtZUEclXkWC9grmEXEUK?usp=sharing
-        
-        args.dataorg_dir = os.path.join(args.dataorg_dir ,'temp')
-
 
         args.dataorg_train_dir = os.path.join(args.dataorg_dir, 'train')
         args.dataorg_test_dir = os.path.join(args.dataorg_dir, 'test')
@@ -2685,7 +2682,15 @@ def nninfo(args, kwargs):
     tree, data,  \n \
     ref: https://github.com/NVIDIA/pix2pixHD \n \
     ref: https://www.tensorflow.org/tutorials/generative/pix2pix \n \
+    \n \
+    citations:\n \
+        InProceedings=DanbooRegion2020,\n \
+        author=Lvmin Zhang, Yi JI, and Chunping Liu, \n \
+        booktitle=European Conference on Computer Vision (ECCV), \n \
+        title=DanbooRegion: An Illustration Region Dataset, \n \
+        year=2020, \n \
     ")
+
 
 #   ******************
 #
