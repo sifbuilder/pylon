@@ -2000,9 +2000,9 @@ def nnvid(args, kwargs):
         )
 
     print(f"|===> nnani fit \n \
-    cwd: {cwd} \n \
-    args.start_frame: {args.start_frame} \n \
-    args.end_frame: {args.end_frame} \n \
+        cwd: {cwd} \n \
+        args.start_frame: {args.start_frame} \n \
+        args.end_frame: {args.end_frame} \n \
     ")
 
     args.max_iterations = args.frame_iterations

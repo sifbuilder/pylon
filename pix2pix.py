@@ -459,6 +459,7 @@ class GAN(object):
 
         generator = self.generator
         results_dir = self.results_dir
+        zfill = self.zfill
 
         for n, (img_input, img_target) in test_dataset.enumerate():
             img_prediction = generator(img_input, training=True) # _e_
