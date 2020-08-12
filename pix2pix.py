@@ -114,7 +114,7 @@ onlllyas = Onlllyas()
 
 def getap():
     cp = {
-        "primecmd": 'nndanboo', # 'nncrys', # 
+        "primecmd": 'nncrys', #  'nndanboo', # 
 
         "MNAME": "pix2pix",
         "AUTHOR": "tensorflow2",
@@ -228,7 +228,7 @@ class GAN(object):
             logs_dir = './',
             ckpt_dir = './',
             ckpt_prefix = './ckpt',
-            prediction_dir = './my_prediction',
+            results_dir = './results',
             input_shape = [256,256,3],
             output_shape = [256,256,3],
 
@@ -240,7 +240,7 @@ class GAN(object):
 
         self.models_dir = models_dir
         self.logs_dir = logs_dir
-        self.prediction_dir = prediction_dir
+        self.results_dir = results_dir
         self.ckpt_dir = ckpt_dir
         self.ckpt_prefix = ckpt_prefix
 
@@ -450,8 +450,6 @@ class GAN(object):
                 print(f'|... saving (checkpoint) the model every {n_iterations} epochs to {self.ckpt_prefix}')
                 self.checkpoint.save(file_prefix = self.ckpt_prefix)
 
- 
-
 
             print ('Time taken for epoch {} is {} sec\n'.format(epoch + 1, time.time()-start))
         self.checkpoint.save(file_prefix = self.ckpt_prefix)
@@ -460,7 +458,7 @@ class GAN(object):
     def generate_images(self, test_dataset, epoch, args=None ):
 
         generator = self.generator
-        prediction_dir = self.prediction_dir
+        results_dir = self.results_dir
 
         for n, (img_input, img_target) in test_dataset.enumerate():
             img_prediction = generator(img_input, training=True) # _e_
@@ -474,13 +472,13 @@ class GAN(object):
                     print(f'generated image {n} in epoch {epoch}')
                     onplot.pil_show_rgbs(display_list, scale=1, rows=1)   
     
-            filename = f'img{n}_epoch{epoch}.png'
-            if args.verbose > 1: 
+            filename = f'img{str(n).zfill(zfill)}_epoch{str(epoch).zfill(zfill)}.png'
+            if args.verbose > 1:
                 print(f'|===> generate_images save \n \
-                    prediction_dir: {prediction_dir} \n \
+                    results_dir: {results_dir} \n \
                     filename: {filename} \n \
                 ')            
-            save_image_path = os.path.join(prediction_dir, filename)
+            save_image_path = os.path.join(results_dir, filename)
             onfile.rgbs_to_file(display_list, scale=1, rows=1, save_path=save_image_path)
 
         
@@ -1029,7 +1027,7 @@ def nndanboo(args, kwargs):
 
         args.download_dir = os.path.join(args.proj_dir, 'download')
 
-        args.prediction_dir = os.path.join(args.proj_dir, 'my_prediction') # in project dir
+        args.results_dir = os.path.join(args.proj_dir, 'results') # in project dir
         args.code_dir = os.path.join(args.proj_dir, 'code') # inside project dir
 
 
@@ -1090,7 +1088,7 @@ def nndanboo(args, kwargs):
 
         os.makedirs(args.proj_dir, exist_ok=True) 
         os.makedirs(args.code_dir, exist_ok=True) 
-        os.makedirs(args.prediction_dir, exist_ok=True) 
+        os.makedirs(args.results_dir, exist_ok=True) 
         os.makedirs(args.download_dir, exist_ok=True) 
         os.makedirs(args.data_train_dir, exist_ok=True) 
         os.makedirs(args.data_train_pict_dir, exist_ok=True) 
@@ -1313,7 +1311,7 @@ def nndanboo(args, kwargs):
         if args.verbose: print(f'|===> model:   \n \
             models_dir = {args.models_dir},\n \
             logs_dir = {args.logs_dir},\n \
-            prediction_dir = {args.prediction_dir},\n \
+            results_dir = {args.results_dir},\n \
             ckpt_dir = {args.ckpt_dir},\n \
             ckpt_prefix = {args.ckpt_prefix},\n \
             input_shape = {args.input_shape},\n \
@@ -1322,7 +1320,7 @@ def nndanboo(args, kwargs):
         model = GAN(
             models_dir = args.models_dir,
             logs_dir = args.logs_dir,
-            prediction_dir = args.prediction_dir,
+            results_dir = args.results_dir,
             ckpt_dir = args.ckpt_dir,
             ckpt_prefix = args.ckpt_prefix,
             input_shape = args.input_shape,
@@ -1632,7 +1630,7 @@ def nncrys(args, kwargs):
         args.data_train_dir = os.path.join(args.data_dir, 'train_dir')
         args.data_test_dir = os.path.join(args.data_dir, 'test_dir')
 
-        args.prediction_dir = os.path.join(args.proj_dir, 'my_prediction') # in project dir
+        args.results_dir = os.path.join(args.proj_dir, 'results') # in project dir
 
         args.dataset_train_B_dir = os.path.join(args.dataset_dir, 'train_B')
         args.dataset_train_A_dir = os.path.join(args.dataset_dir, 'train_A')
@@ -1655,7 +1653,7 @@ def nncrys(args, kwargs):
         os.makedirs(args.logs_dir, exist_ok=True)
         os.makedirs(args.tmp_dir, exist_ok=True)
         os.makedirs(args.records_dir, exist_ok=True)
-        os.makedirs(args.prediction_dir, exist_ok=True)
+        os.makedirs(args.results_dir, exist_ok=True)
 
 
     if args.verbose: print(f"|---> nncrys tree: {args.PROJECT}:  \n \
@@ -1669,6 +1667,7 @@ def nncrys(args, kwargs):
     args.data_test_dir:  {args.data_test_dir} :-: {onutil.qfiles(args.data_test_dir, '*.jpg')} jpgs \n \
     args.dataset_dir:    {args.dataset_dir} :-: {onutil.qfolders(args.dataset_dir)} folders\n \
     args.logs_dir:       {args.logs_dir} {onutil.qfiles(args.models_dir, '*')} logs \n \
+    args.results_dir:       {args.results_dir} {onutil.qfiles(args.results_dir, '*')} results \n \
     args.dataset_train_B_dir: {args.dataset_train_B_dir} :-: {onutil.qfiles(args.dataset_train_B_dir, '*.jpg')}  jpgs \n \
     args.dataset_train_A_dir: {args.dataset_train_A_dir} :-: {onutil.qfiles(args.dataset_train_A_dir, '*.jpg')}  jpgs \n \
     args.dataset_test_B_dir:  {args.dataset_test_B_dir} :-: {onutil.qfiles(args.dataset_test_B_dir, '*.jpg')}  jpgs \n \
@@ -1689,21 +1688,37 @@ def nncrys(args, kwargs):
         args.batch_size=1
         args.input_shape = [args.height, args.width, args.input_channels]
 
-    if args.verbose: print(f"|--->  {args.PROJECT}: config  \n \
+    if args.verbose: print(f'|--->  {args.PROJECT}: config  \n \
         args.height:         {args.height} \n \
         args.width:          {args.width} \n \
-        args.max_size:          {args.max_size} \n \
+        args.max_size:       {args.max_size} \n \
         args.input_channels: {args.input_channels} \n \
         args.buffer_size:    {args.buffer_size} \n \
         args.batch_size:     {args.batch_size} \n \
         args.input_shape:    {args.input_shape} \n \
-    ")
+    ')
 
 
     if 0: # clear tree
 
         print(f"clear tree at {args.proj_dir}")
         onutil.clearfolder(args.proj_dir, inkey=args.PROJECT)
+
+
+    if 0: # make gif
+
+        #onvid.folder_to_vid(args.results_dir, args.results_dir, 
+        #    ext='png', save=True)
+        dstpath = os.path.join(args.results_dir, 'out.gif')
+        print(f"|===> tovid \n \
+            args.results_dir: {args.results_dir} \n \
+            dstpath: {dstpath} \n \
+        ")
+        nresults = os.path.join(args.gdata, '../glab/', args.MNAME, args.PROJECT, 'results')
+        srcdir = nresults # args.results_dir
+
+        onvid.folder_to_gif(srcdir, dstpath, patts=['img12*.png'])
+
 
     if 1: # raw images to data (dataorg_dir => data_train_dir, data_test_dir)
 
@@ -1960,7 +1975,7 @@ def nncrys(args, kwargs):
         model = GAN( 
             models_dir = args.models_dir,
             logs_dir = args.logs_dir,
-            prediction_dir = args.prediction_dir,
+            results_dir = args.results_dir,
             ckpt_dir = args.ckpt_dir,
             ckpt_prefix = args.ckpt_prefix,
             input_shape = args.input_shape,

@@ -1697,14 +1697,17 @@ class Onvid:
         os.system('rm -rf %s'%temp_dir)
 
     @staticmethod
-    def folder_to_vid(fromfolder, dstfile, ext='png', save=True):
+    def folder_to_vid(fromfolder, dstfile, ext='png', save=True, args=None):
         srcpath = fromfolder
         anifile = dstfile
         size=(640, 480)
         fps=20
 
-        print('anigif srcpath:', srcpath)
-        print('anigif anifile:', anifile)
+        if 1: # args.verbose: 
+            print(f'|--->  folder_to_vid  \n \
+                srcpath:         {srcpath} \n \
+                anifile:         {anifile} \n \
+            ')            
 
         # anime.anigif(srcpath, anifile)
         fig = plt.figure()
@@ -1714,22 +1717,26 @@ class Onvid:
         ax.set_yticks([])
         images = []
 
-        imgnames = [img for img in os.listdir(srcpath) if img.endswith("." + ext)]
+        imgnames = [img for img in os.listdir(srcpath) if img.endswith(ext)]
         for i,imgname in enumerate(imgnames):
-            imgpath = srcpath + '/' + imgname
+            imgpath = os.path.join(srcpath, imgname)
             img = imageio.imread(imgpath)
             label=' '
             plt_im = plt.imshow(img, animated=True)
             plt_txt = plt.text(10, 310, label, color='black')
             images.append([plt_im, plt_txt])
 
-        print("images len:", len(images))
-
         # animated_gif.save(anipath + "/ani.gif")
         # MovieWriter imagemagick unavailable; 
         # trying to use <class 'matplotlib.animation.PillowWriter'> instead
-        print("call anim.ArtistAnimation with images q: %d" %len(images))
-        ani = anim.ArtistAnimation(fig, images, interval=20, blit=True, repeat_delay=1000)
+        if 1: #  args.verbose:
+            print(f'|...>  folder_to_vid: call anim.ArtistAnimation  \n \
+                images len:      {len(images)} \n \
+            ')
+
+        import matplotlib.animation as anim
+        ani = anim.ArtistAnimation(fig, images, 
+            interval=20, blit=True, repeat_delay=1000)
 
         if save:
             ani.save(dstfile, writer='imagemagick')  
@@ -1737,19 +1744,25 @@ class Onvid:
         return ani
 
     @staticmethod
-    def folder_to_gif(fromfolder, dstpath='./out.gif', ext='png'):
-        print(f"nnwalk create gif {dstpath}")
+    def folder_to_gif(fromfolder, dstpath='./out.gif', patts=None):
+        paths = Onfile.path_to_paths(fromfolder, patts)
+        paths = sorted(paths)
+        print(paths)
+        
+        print(f'---> folder_to_gif \n \
+            dstpath: {dstpath} \n \
+            patts: {patts} \n \
+        ')
+
         with imageio.get_writer(dstpath, mode='I') as writer:
-            frames = os.path.join(fromfolder, f'*.{ext}')
-            filenames = glob.glob(frames)
-            filenames = sorted(filenames)
-            for i,filename in enumerate(filenames):
+
+            for i,filename in enumerate(paths):
                 # if i % 8 != 0:
                 #     continue
                 img = imageio.imread(filename)
                 writer.append_data(img)
-            image = imageio.imread(filename)
-            writer.append_data(image)
+            #image = imageio.imread(filename)
+            #writer.append_data(image)
 
     @staticmethod
     def vid_show(path):
