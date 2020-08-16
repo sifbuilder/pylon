@@ -138,18 +138,18 @@ def getap():
         "LOCALMODELS": 0,
         "LOCALLAB": 1,
         "grel_infix": '../..',            # relative path to content 
-        "local_prefix": '//enas/hdrive',     
-        "cloud_prefix": '/content/drive/My Drive',     
-        "remote_prefix": '/content',     
+        "net_prefix": '//enas/hdrive',     
+        "gdrive_prefix": '/content/drive/My Drive',     
+        "gcloud_prefix": '/content',     
 
 	}
 
-	dir_path = os.path.abspath('')
+	local_prefix = os.path.abspath('')
 	try:
-			dir_path = os.path.dirname(os.path.realpath(__file__)) # script dir
+			local_prefix = os.path.dirname(os.path.realpath(__file__)) # script dir
 	except:
 			pass
-	cp["dir_path"] = dir_path
+	cp["local_prefix"] = local_prefix
 
 
 	tree = ontree.tree(cp)
@@ -1731,7 +1731,7 @@ def nnani(args, kwargs):
         extension:  {extension} \n \
         style_imgs_dir: {args.style_imgs_dir} \n \
         style_imgs: {args.style_imgs_files} \n \
-        q_style_imgs: {len( )} \n \
+        q_style_imgs: {len(args.style_imgs_files)} \n \
         video_file: {args.video_file} \n \
         video_output_dir: {args.video_output_dir} \n \
         video:      {args.video} \n \

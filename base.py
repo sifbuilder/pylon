@@ -102,14 +102,14 @@ from tensorflow.python.client import device_lib # pylint: disable=no-name-in-mod
 
 # GLOBALS 
 
-dir_path = os.path.abspath('')
+local_prefix = os.path.abspath('')
 try:
-    dir_path = os.path.dirname(os.path.realpath(__file__)) # script dir
+    local_prefix = os.path.dirname(os.path.realpath(__file__)) # script dir
 except:
     pass
 
 # cuda_cache_path = os.path.join(os.path.dirname(__file__), '_cudacache')
-cuda_cache_path = os.path.join(os.path.dirname(dir_path), '_cudacache')
+cuda_cache_path = os.path.join(os.path.dirname(local_prefix), '_cudacache')
 cuda_cache_version_tag = 'v1' # _e_
 do_not_hash_included_headers = True # _e_ # Speed up compilation by assuming that headers included by the CUDA code never change. Unsafe!
 
@@ -137,41 +137,52 @@ class Ontree:
     @staticmethod
     def tree(cp):
 
+        # dataprefix
         if os.path.exists('/content/drive/My Drive'):  # collab with drive
             dataprefix = '/content/drive/My Drive'
         elif os.path.exists('/content'): # if /content exists, is collab
             dataprefix = '/content' 
-        elif not cp["LOCALMODELS"] and os.path.exists(cp['local_prefix']): # network
-            dataprefix = cp['local_prefix'] 
+        elif not cp["LOCALDATA"] and os.path.exists(cp['net_prefix']): # network
+            dataprefix = cp['net_prefix'] 
         else:                               # local
-            dataprefix = os.path.join(cp["dir_path"], cp["grel_infix"], 'content') # dnns/../content/gdata/
+            dataprefix = os.path.join(cp["local_prefix"], cp["grel_infix"], 'content') # dnns/../content/gdata/
 
         # modelsprefix
         if os.path.exists('/content/drive/My Drive'):  # collab with drive
             modelsprefix = '/content/drive/My Drive'
         elif os.path.exists('/content'): # if /content exists, is collab
             modelsprefix = '/content' 
-        elif not cp["LOCALMODELS"] and os.path.exists(cp['local_prefix']): # network
-            modelsprefix = cp['local_prefix'] 
+        elif cp["LOCALMODELS"]:                               # local
+            modelsprefix = os.path.join(cp["local_prefix"], cp["grel_infix"], 'content') # dnns/../content/gmodel/
+        elif os.path.exists(cp['net_prefix']): # try net drive
+                modelsprefix = cp['net_prefix'] 
         else:                               # local
-            modelsprefix = os.path.join(cp["dir_path"], cp["grel_infix"], 'content') # dnns/../content/gdata/
+            print(f'drive could not be found !!!!!!!!!!!!!! ')
+
 
         # labprefix
         if os.path.exists('/content/drive/My Drive'):  # collab with drive
             labprefix = '/content/drive/My Drive'
         elif os.path.exists('/content'): # if /content exists, is collab
             labprefix = '/content' 
-        elif not cp["LOCALLAB"] and os.path.exists(cp['local_prefix']): # network
-            labprefix = cp['local_prefix'] 
+        elif cp["LOCALLAB"]:                               # local
+            labprefix = os.path.join(cp["local_prefix"], cp["grel_infix"], 'content') # dnns/../content/glab/
+        elif os.path.exists(cp['net_prefix']): # try net drive
+                labprefix = cp['net_prefix'] 
         else:                               # local
-            labprefix = os.path.join(cp["dir_path"], cp["grel_infix"], 'content') # dnns/../content/gdata/
-
+            print(f'drive could not be found !!!!!!!!!!!!!! ')
 
         gdata = dataprefix + '/gdata/'
         gmodel = modelsprefix + '/gmodel/'
         glab = labprefix + '/glab/'
         gadir = os.getcwd()
-        gedir = os.path.join(cp["dir_path"])
+        gedir = os.path.join(cp["local_prefix"])
+
+
+        print("*******************************")
+        Onutil.ddict(cp, 'cp')
+        print(labprefix, glab)
+        #exit()
 
         assert os.path.exists(gdata), f"gdata {gdata} does not exist"
         assert os.path.exists(gmodel), f"gmodel {gmodel} does not exist"
@@ -203,8 +214,8 @@ class Ontree:
 
         tp = {
 
-            "LOCAL": cp["dir_path"], # ''
-            "FROMPATH": cp["dir_path"],
+            "LOCAL": cp["local_prefix"], # ''
+            "FROMPATH": cp["local_prefix"],
                     
             "gdata": gdata,
             "gmodel": gmodel,
@@ -324,22 +335,6 @@ class Onutil:
             print(item)
 
     @staticmethod
-    def clearfolder(folder, inkey=''):
-        if inkey and inkey in folder:
-            print(f"|===> clearfolder: {folder} has key {inkey}. will clear")
-            for filename in os.listdir(folder):
-                file_path = os.path.join(folder, filename)
-                try:
-                    if os.path.isfile(file_path) or os.path.islink(file_path):
-                        os.unlink(file_path)
-                    elif os.path.isdir(file_path):
-                        shutil.rmtree(file_path)
-                except Exception as e:
-                    print('Failed to delete %s. Reason: %s' % (file_path, e))
-        else:
-            print(f"|===> clearfolder: {folder} has no key {inkey}")
-
-    @staticmethod
     def isempty(folder):
         empty = True
         if [f for f in os.listdir(folder) if not f.startswith('.')] == []:
@@ -355,46 +350,6 @@ class Onutil:
                 for name in dirs:
                     print(os.path.join(root, name))
 
-    @staticmethod
-    def copyfolder(input_folder, output_folder, deep=True):
-        for filename in os.listdir(input_folder):
-            input_path = os.path.join(input_folder, filename)
-            try:
-                if os.path.isfile(input_path) or os.path.islink(input_path):
-                    output_path = os.path.join(output_folder, filename)
-                    shutil.copyfile(input_path, output_path)
-                elif os.path.isdir(input_path):
-                    if deep:
-                        Onutil.copyfolder(input_path, output_folder)
-            except Exception as e:
-                print(f'Failed to copy {input_path}. Reason: {e}')
-
-    @staticmethod
-    def qfiles(folder, patts=None):
-        howmany = 0
-        if not patts:
-            howmany = len(os.listdir(folder))
-        elif type(patts) is list: 
-            paths = []
-            howmany = len(paths)
-            for patt in patts:
-                infolder = os.path.join(folder, patt)
-                pathsinfolder = glob.glob(infolder)
-                paths = paths + pathsinfolder
-                howmany = len(paths)		
-        else:
-            files = glob.glob(os.path.join(folder, patts))
-            howmany = len(files)
-        return howmany
-
-    @staticmethod
-    def qfolders(folder, topdown=False):
-        q = 0
-        if os.path.exists(folder):        
-            for root, dirs, files in os.walk(folder, topdown=topdown):
-                for name in dirs:
-                    q += 1
-        return q
 
     @staticmethod
     def nameint(i,zfill=4):
@@ -710,6 +665,95 @@ class Onplot:
             plt.axis('off')
         plt.show()
  
+
+    #https://stackoverflow.com/questions/53255432/saving-a-grid-of-heterogenous-images-in-python
+    @staticmethod
+    def plot_save_grid(ims, path=None, rows=None, cols=None, 
+            figsize = (6,5.9),
+            fill=1, showax=0,
+            do =  ['plot']):
+        if rows is None != cols is None:
+            raise ValueError("Set either both rows and cols or neither.")
+
+        print(f'|---> plot_save_grid {len(ims)} to {path}')
+
+        plt.close() 
+
+        if rows is None:
+            rows = len(ims)
+            cols = 1
+        gridspec_kw = {'wspace': 0, 'hspace': 0} if fill else {}
+        fig,axarr = plt.subplots(rows, cols, gridspec_kw=gridspec_kw, figsize=figsize)
+
+        if fill:
+            bleed = 0
+            fig.subplots_adjust(left=bleed, bottom=bleed, right=(1 - bleed), top=(1 - bleed))
+
+        for ax,im in zip(axarr.ravel(), ims):
+            ax.imshow(im)
+            if not showax:
+                ax.set_axis_off()
+
+        kwargs = {'pad_inches': .01} if fill else {}
+        print(f'plot_save_grid {len(ims)} {path}')
+
+        if 'save' in do:
+            if path:
+                fig.savefig(path, **kwargs)
+            else:
+                print(f'path must be defined')
+
+        if 'plot' in do:
+            plt.show()
+
+    @staticmethod
+    def plot_iter_grid(model, dataset, rows, cols, figsize = (10,9), do=['plot'], ext='jpg', prefix = 'frame'):
+        rndvects = {}
+
+        print(f'|--->  plot_iter_grid {do}')
+
+        size = (model.input_shape[0], model.input_shape[1], model.input_shape[2])
+        vary = np.random.normal(0.0, 1.0, size=size).astype('float32') # vary shape: (512, 512, 3)
+
+        iterator = iter(dataset)
+        
+        fig = plt.figure(figsize=figsize)
+        #plt.tight_layout(pad=0.2, w_pad=0.2, h_pad=1.0)
+
+        if 1: # fill:
+            bleed = 0
+            fig.subplots_adjust(left=bleed, bottom=bleed, right=(1 - bleed), top=(1 - bleed))
+
+        qtiles = cols * rows
+        
+        ckptidx = model.ckptidx
+        ckptidx = Onutil.nameint(ckptidx)
+        frame = f'{prefix}{ckptidx}.{ext}'
+        path = os.path.join(model.results_dir, frame)
+
+        images = []
+        for i in range(rows):
+
+            for j in range(cols):
+
+                inp, rea = iterator.get_next()
+                img = model.generator(inp, training=True)
+                img = Onformat.nnba_to_rgb(img)
+
+                images.append(img)
+
+                #x = Image.fromarray(img)
+
+                #idx = i * cols + j + 1
+                #plt.subplot(rows, cols, idx)
+                #plt.imshow(img)
+                #plt.axis('off')
+
+
+        Onplot.plot_save_grid(images, path, rows, cols,do=['plot', 'save'])
+
+
+
     @staticmethod   
     def plot_nuas(imgs=[], r=1, c=1, titles=[]):
         assert(not c == 0)
@@ -1153,11 +1197,11 @@ class Onformat:
         return PIL.Image.fromarray(nua)
 
     @staticmethod
-    def path_to_nbt_with_tf(img1, height=256, width=256):
-        img1 = Onfile.path_to_rgb(img1)
+    def path_to_nbt_with_tf(img, height=256, width=256):
+        img = Onfile.path_to_rgb(img)
         img = tf.image.resize(img, [height, width], method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)        
-        img1 = Onformat.rgb_to_nba(img1)
-        return img1
+        img = Onformat.rgb_to_nba(img)
+        return img
 
 
 #   ******************
@@ -1269,8 +1313,8 @@ class Onfile:
         return imgs
 
     @staticmethod
-    def folder_to_tnuas(folder, pat='*.jpg', max_size = None, img_nrows = None, img_ncols = None):
-        paths = glob.glob(os.path.join(folder, pat))
+    def folder_to_tnuas(folder, patt='*.jpg', max_size = None, img_nrows = None, img_ncols = None):
+        paths = glob.glob(os.path.join(folder, patt))
         tnuas = []
         for path in paths:
             nua = Onfile.path_to_nnua(path, max_size, img_nrows, img_ncols)
@@ -1443,6 +1487,65 @@ class Onfile:
                 else:
                     pass # print('Only image')          
         return paths
+
+
+    @staticmethod
+    def copyfolder(input_folder, output_folder, deep=True):
+        for filename in os.listdir(input_folder):
+            input_path = os.path.join(input_folder, filename)
+            try:
+                if os.path.isfile(input_path) or os.path.islink(input_path):
+                    output_path = os.path.join(output_folder, filename)
+                    shutil.copyfile(input_path, output_path)
+                elif os.path.isdir(input_path):
+                    if deep:
+                        onfile.copyfolder(input_path, output_folder)
+            except Exception as e:
+                print(f'Failed to copy {input_path}. Reason: {e}')
+                
+    @staticmethod
+    def clearfolder(folder, inkey=''):
+        if inkey and inkey in folder:
+            print(f"|===> clearfolder: {folder} has key {inkey}. will clear")
+            for filename in os.listdir(folder):
+                file_path = os.path.join(folder, filename)
+                try:
+                    if os.path.isfile(file_path) or os.path.islink(file_path):
+                        os.unlink(file_path)
+                    elif os.path.isdir(file_path):
+                        shutil.rmtree(file_path)
+                except Exception as e:
+                    print('Failed to delete %s. Reason: %s' % (file_path, e))
+        else:
+            print(f"|===> clearfolder: {folder} has no key {inkey}")
+
+    @staticmethod
+    def qfolders(folder, topdown=False):
+        q = 0
+        if os.path.exists(folder):        
+            for root, dirs, files in os.walk(folder, topdown=topdown):
+                for name in dirs:
+                    q += 1
+        return q
+
+    @staticmethod
+    def qfiles(folder, patts=None):
+        howmany = 0
+        if not patts:
+            howmany = len(os.listdir(folder))
+        elif type(patts) is list: 
+            paths = []
+            howmany = len(paths)
+            for patt in patts:
+                infolder = os.path.join(folder, patt)
+                pathsinfolder = glob.glob(infolder)
+                paths = paths + pathsinfolder
+                howmany = len(paths)		
+        else:
+            files = glob.glob(os.path.join(folder, patts))
+            howmany = len(files)
+        return howmany
+
 
     @staticmethod
     def path_to_paths(path, patts=['*.jpg', '*.jpeg', '*.png']):
@@ -1747,9 +1850,9 @@ class Onvid:
     def folder_to_gif(fromfolder, dstpath='./out.gif', patts=None):
         paths = Onfile.path_to_paths(fromfolder, patts)
         paths = sorted(paths)
-        print(paths)
-        
+
         print(f'---> folder_to_gif \n \
+            fromfolder: {fromfolder} \n \
             dstpath: {dstpath} \n \
             patts: {patts} \n \
         ')
