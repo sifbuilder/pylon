@@ -114,7 +114,7 @@ onlllyas = Onlllyas()
 
 def getap():
     cp = {
-        "primecmd": 'nncrys', #  'nndanboo', # 
+        "primecmd": 'nndanboo', # 'nncrys', #  
 
         "MNAME": "pix2pix",
         "AUTHOR": "tensorflow2",
@@ -513,7 +513,7 @@ class GAN(object):
 
         print(f'|---> model.restore_checkpoint \n \
             self.checkpoint: {self.checkpoint} \n \
-            ckptidx: {self.ckptidx} \n \
+            self.ckptidx: {self.ckptidx} \n \
             self.ckpt_dir: {self.ckpt_dir} \n \
             self.ckpt_prefix = {self.ckpt_prefix} \n \
             max_to_keep: {max_to_keep} \n \
@@ -528,18 +528,16 @@ class GAN(object):
         
 
         # self.ckptidx: {None => last, ckptidx-n => n, ckptidx--n => none}
-        if int(self.ckptidx) < 0:
+        if self.ckptidx == None:
+            fromcheckpoint = ckpt_manager.latest_checkpoint
+            self.ckptidx = fromcheckpoint.split('-')[-1]
+        elif int(self.ckptidx) < 0:
             fromcheckpoint = None
             self.ckptidx = fromcheckpoint
         elif int(self.ckptidx) >= 0:
             fromcheckpoint = os.path.join(self.ckpt_dir, f'{self.ckpt_prefix}{self.ckptidx}')
             self.ckptidx = self.ckptidx
-        else:
-            fromcheckpoint = ckpt_manager.latest_checkpoint
-            self.ckptidx = fromcheckpoint.split('-')[-1]
 
-        print("**********", fromcheckpoint, self.ckptidx)
-        
 
         if fromcheckpoint:
             self.checkpoint.restore(fromcheckpoint)
@@ -1026,11 +1024,11 @@ def nndanboo(args, kwargs):
 
     print(f"|---> nndanboo: {args.PROJECT}  \n ")
 
-
-
     if 1: # tree
         # [1] https://github.com/lllyasviel/DanbooRegion
         # [2] https://drive.google.com/drive/folders/1ihLt6P7UQRlaFtZUEclXkWC9grmEXEUK?usp=sharing
+
+        assert(os.path.exists(args.dataorg_dir))
 
         args.dataorg_train_dir = os.path.join(args.dataorg_dir, 'train')
         args.dataorg_test_dir = os.path.join(args.dataorg_dir, 'test')
@@ -1109,17 +1107,20 @@ def nndanboo(args, kwargs):
 
 
     if 1: # config
+
+        args.ckpt_prefix = 'ckpt-'
+
         args.dim = 512
         args.show_size = 512
         args.height = 512
         args.width = 512
+
         args.max_size = None # control set resize
 
         args.buffer_size = 10000
         args.batch_size = 1
         args.max_epochs = 601
         args.gpu = 1 # _e_
-
         args.input_shape = [args.height, args.width, args.input_channels]		
 
     print(f"|---> nndanboo config:  \n \
@@ -1140,7 +1141,6 @@ def nndanboo(args, kwargs):
     assert os.path.exists(args.code_dir), "code_dir not found"        
     os.chdir(args.code_dir) # _e_ not std
 
-
     if args.visual > 1: # visualize region image with image color map
 
         if 0:
@@ -1154,7 +1154,7 @@ def nndanboo(args, kwargs):
             cv2.waitKey(0)
 
 
-    if 0: # org to (train) data 
+    if 1: # org to (train) data 
 
         print(f'|---> nndanregion: org => data train \n \
             \n \
@@ -1190,7 +1190,7 @@ def nndanboo(args, kwargs):
             print(f'|... train no processFolder !!!!. files already there ')
 
 
-    if 0: # org to (test) data 
+    if 1: # org to (test) data 
 
         print(f'|---> nndanregion org test to data q: \n \
             org image: {onfile.qfiles(args.dataorg_test_dir, "*.png")} \n \
@@ -1237,7 +1237,8 @@ def nndanboo(args, kwargs):
             cv2.waitKey(0)
 
 
-    if 0: # (train) data to skeletons
+
+    if 1: # (train) data to skeletons
 
         print(f'|===> skeletonize_all')
 
@@ -1296,9 +1297,9 @@ def nndanboo(args, kwargs):
             else:
                 print(f'|... no process. out files {qoutfiles} in')
 
+    
 
-
-    if 0: # skeletom to regions  
+    if 0: # skeletom to regions show
 
         #skeleton_path = os.path.join(args.code_dir, 'skeleton_test.png')
         skeleton_path = os.path.join(args.code_dir, 'danskel.jpg')
@@ -1312,6 +1313,7 @@ def nndanboo(args, kwargs):
         else:
             cv2.imshow('skel', img)
             cv2.waitKey(0)
+
 
 
     if 1: # model
@@ -1363,7 +1365,7 @@ def nndanboo(args, kwargs):
             cv2.waitKey(0)
 
 
-
+    
     if 1: # train
 
         if 1: #  data => dataset (train) # paths_to_dataset_22
@@ -1715,8 +1717,9 @@ def nncrys(args, kwargs):
         onfile.clearfolder(args.proj_dir, inkey=args.PROJECT)
 
 
-    if 0: # make gif
+    if 0: # make gif out of results: all generatd imgs with patterns
 
+        imgpatts = ['0012*.png']
         dstpath = os.path.join(args.results_dir, 'out.gif')
 
         nresults = args.results_dir
@@ -1727,8 +1730,7 @@ def nncrys(args, kwargs):
             nresults: {nresults} \n \
             srcdir: {srcdir} \n \
         ")
-        onvid.folder_to_gif(srcdir, dstpath, patts=['0012*.png'])
-
+        onvid.folder_to_gif(srcdir, dstpath, patts=imgpatts)
 
 
     if 1: # 	model
@@ -2001,7 +2003,7 @@ def nncrys(args, kwargs):
             args.records_dir)
 
 
-    if 0: # walk ckpt models
+    if 1: # walk ckpt models
 
         maxitems = 40
         patts = ['*.index']
@@ -2015,7 +2017,6 @@ def nncrys(args, kwargs):
             patts: {patts} \n \
             paths: {len(paths)} \n \
         ')
-
 
         for path in paths:
             filename = os.path.basename(path)
@@ -2041,7 +2042,6 @@ def nncrys(args, kwargs):
         ckptidxs=[]
         for i,idx in enumerate(range(qckptidxs-1)):
             if i % mod == 1:
-                print(f'idx {idx}')
                 ckptidxs.append(idx)
         ckptidxs.append(len(ckptidxs))
         
@@ -2061,7 +2061,7 @@ def nncrys(args, kwargs):
             onplot.plot_iter_grid(model, test_dataset, 1, 3, figsize = (6.4, 6.3), do=['save']) # do=['plot', 'save']
 
 
-    if 0: # ckpt models to gif
+    if 1: # ckpt models to gif
         fromfolder = args.results_dir
         dstpath = os.path.join(args.results_dir, 'out.gif')
         patts= ['frame*']   
@@ -2128,7 +2128,7 @@ def nncrys(args, kwargs):
             ]
             onplot.pil_show_rgbs(display_list, scale=1, rows=1)   
 
-    if 1: # train
+    if 0: # train
 
         print(f"|===> train loop")
 

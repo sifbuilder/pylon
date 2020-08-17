@@ -717,7 +717,13 @@ class Onplot:
 
         iterator = iter(dataset)
         
-        fig = plt.figure(figsize=figsize)
+        ppi = 80
+        ppt = 3 * ppi
+        fy = int(cols * ppt / ppi)
+        fx = int(rows * ppt / ppi)
+
+        #fig = plt.figure(figsize=figsize)
+        fig = plt.figure(figsize=(fy, fx))
         #plt.tight_layout(pad=0.2, w_pad=0.2, h_pad=1.0)
 
         if 1: # fill:
@@ -741,13 +747,6 @@ class Onplot:
                 img = Onformat.nnba_to_rgb(img)
 
                 images.append(img)
-
-                #x = Image.fromarray(img)
-
-                #idx = i * cols + j + 1
-                #plt.subplot(rows, cols, idx)
-                #plt.imshow(img)
-                #plt.axis('off')
 
 
         Onplot.plot_save_grid(images, path, rows, cols,do=['plot', 'save'])
@@ -1855,13 +1854,13 @@ class Onvid:
             fromfolder: {fromfolder} \n \
             dstpath: {dstpath} \n \
             patts: {patts} \n \
+            paths: {len(paths)} \n \
         ')
 
         with imageio.get_writer(dstpath, mode='I') as writer:
 
             for i,filename in enumerate(paths):
-                # if i % 8 != 0:
-                #     continue
+                # if i % 8 != 0: continue
                 img = imageio.imread(filename)
                 writer.append_data(img)
             #image = imageio.imread(filename)
