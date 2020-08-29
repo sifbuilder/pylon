@@ -117,7 +117,7 @@ onlllyas = Onlllyas()
 
 def getap():
 	cp = {
-        "primecmd": 'nnimg',        
+        "primecmd": 'nnani',        
 
         "MNAME": "stransfer",      
         "AUTHOR": "xueyangfu",      
@@ -267,7 +267,7 @@ def getxp(cp):
         "frames_dir": os.path.join(cp["results_dir"], 'cromes/frames'),
         "frames_dir": os.path.join(cp["lab"], "NewYork"),
         "frame_iterations": 800,
-        "start_frame": 1,
+        "start_frame": 0,
         "end_frame": 9,
         "frame": None,    
 
@@ -540,21 +540,29 @@ def _get_init_image(init_img, init_img_dir='./', max_size=512):
 
     return img
 
-def get_init_image(init_type, content_img, style_imgs, frame=None, args=None):
-    if init_type == 'content':
-        return content_img
-    elif init_type == 'style':
-        return style_imgs[0]
-    elif init_type == 'random':
-        init_img = get_noise_image(args.noise_ratio, content_img)
-        return init_img
-    # only for video frames
-    elif init_type == 'prev':
-        init_img = get_prev_frame(frame, args)
-        return init_img
-    elif init_type == 'prev_warped':
-        init_img = get_prev_warped_frame(frame, args)
-        return init_img
+#def get_init_image(
+#        init_type, 
+#        content_img, 
+#        style_imgs, 
+#        frame=None, 
+#        args=None
+#    ):
+#    print(f"|---> get_init_image of type: {init_type} with frame: {frame}")
+
+#    if init_type == 'content':
+#        return content_img
+#    elif init_type == 'style':
+#        return style_imgs[0]
+#    elif init_type == 'random':
+#        init_img = get_noise_image(args.noise_ratio, content_img)
+#        return init_img
+#    # only for video frames
+#    elif init_type == 'prev':
+#        init_img = get_prev_frame(frame, args)
+#        return init_img
+#    elif init_type == 'prev_warped':
+#        init_img = get_prev_warped_frame(frame, args)
+#        return init_img
 
 
 def get_input_image(
@@ -567,7 +575,8 @@ def get_input_image(
         video_output_dir='./', 
         content_frame_frmt = 'frame_{}.ppm',
         zill=4,
-        noise_ratio = 1.0,
+        noise_ratio = 1.0, 
+        args=None
     ):
     print(f"|---> get_input_image of type: {init_type} with frame: {frame}")
 
@@ -584,15 +593,26 @@ def get_input_image(
     # only for video frames
     elif init_type == 'prev':
         assert(not frame == None)
+        #init_img = get_prev_frame(
+        #    frame, 
+        #    video_output_dir,
+        #    content_frame_frmt,
+        #    zill,
+        #)
         init_img = get_prev_frame(
             frame, 
-            video_output_dir,
-            content_frame_frmt,
-            zill,
-        )
+            args
+        )        
         return init_img
     elif init_type == 'prev_warped':
-        init_img = get_prev_warped_frame(frame, video_input_dir)
+        #init_img = get_prev_warped_frame(
+        #    frame, 
+        #    video_input_dir
+        #)
+        init_img = get_prev_warped_frame(
+            frame, 
+            args
+        )        
         return init_img
 
 def get_optimizer(loss):
@@ -748,6 +768,7 @@ def write_image_output(
         max_epochs = 1000,
         args=None,
     ):
+    print(f'|---> write_image_output  to: {img_output_dir}')
     img_name = 'result'
     content_img_file = 'content.jpg'
     init_img_name = 'init.jpg'
@@ -1203,14 +1224,14 @@ def build_vgg(
     return vgg
 
 
-class Styler(tf.keras.models.Model):
+class GAN(tf.keras.models.Model):
 
     def __init__(self, 
         input_shape = (224, 224, 3),        
         args=None, 
     ):
 
-        super(Styler, self).__init__()
+        super(GAN, self).__init__()
 
         content_layers = args.content_layers
         style_layers = args.style_layers
@@ -1234,9 +1255,9 @@ class Styler(tf.keras.models.Model):
         )
 
         layer_names = content_layers + style_layers
-        print("Styler content_layers", content_layers)
-        print("Styler style_layers", style_layers)
-        print("Styler layers", layer_names)
+        print("GAN content_layers", content_layers)
+        print("GAN style_layers", style_layers)
+        print("GAN layers", layer_names)
         outputs = {name: vggmodel.get_layer(name).output for name in layer_names}        
         # outputs = [vggmodel.get_layer(name).output for name in layer_names]
         self.net = tf.keras.Model([vggmodel.input], outputs) 
@@ -1264,9 +1285,10 @@ class Styler(tf.keras.models.Model):
             img = imgs[i] # _e_
 
             preprocessed_input = onvgg.tnua_to_vgg(img, width=width, height=height)
-            print(f'|===> extract_features \n \
-                preprocessed_input {type(preprocessed_input)} {np.shape(preprocessed_input)} \n \
-            ')
+            if 0:
+                print(f'|===> extract_features \n \
+                    preprocessed_input {type(preprocessed_input)} {np.shape(preprocessed_input)} \n \
+                ')
             outputs = net(preprocessed_input)
 
             features = {}
@@ -1281,7 +1303,7 @@ class Styler(tf.keras.models.Model):
         return rei            
 
     def call(self, image = None):
-        print(f'|===> Styler call {type(image)}')
+        print(f'|===> GAN call {type(image)}')
         img = self.image # <class 'tensorflow.python.ops.resource_variable_ops.ResourceVariable'>
         img = onformat.nua_to_pil(img)
         img.show()
@@ -1331,7 +1353,9 @@ class Styler(tf.keras.models.Model):
         self.image = image
 
 
-    def fit(self, input_img, content_img, style_imgs, args  = None): # frame = None,
+    def fit(self, input_img, content_img, style_imgs, 
+            frame = None,
+            args  = None): # 
 
         max_epochs = args.max_epochs
         steps_per_epoch = args.steps_per_epoch
@@ -1348,7 +1372,9 @@ class Styler(tf.keras.models.Model):
         print(f'|===> fit \n \
             max_epochs: {max_epochs} \n \
             steps_per_epoch: {steps_per_epoch} \n \
-            input_img: {np.shape(input_img)} \n \
+            input_img shape: {np.shape(input_img)} \n \
+            content_img shape: {np.shape(content_img)} \n \
+            style_imgs shape: {[np.shape(img) for img in style_imgs]} \n \
         ')
         train_step = self.train_step
 
@@ -1395,7 +1421,7 @@ class Styler(tf.keras.models.Model):
             img_name = image_epoch_format.format(str(epoch).zfill(zfill))        
             img_path = os.path.join(img_output_dir, img_name)
             onfile.pil_to_file_with_cv(img_path, img)
-
+            
             write_image_output(
                 output_img = onformat.nua_to_pil(image), 
                 content_img = onformat.nua_to_pil(content_img), 
@@ -1406,6 +1432,12 @@ class Styler(tf.keras.models.Model):
                 args = args,
             )
 
+        if video:
+            frame_name = args.content_frame_frmt.format(str(frame).zfill(zfill))
+            outpath_path = os.path.join(args.video_output_dir, frame_name)
+            print(f"|... fit save frame to {outpath_path} on epoch {epoch}")
+            output_img = onformat.nua_to_pil(image)
+            onfile.pil_to_file_with_cv(outpath_path, output_img)
 
         end = time.time()
         print("Total time: {:.1f}".format(end-start))
@@ -1562,6 +1594,11 @@ def nnimg(args, kwargs):
             onplot.pil_show_nuas(style_imgs, ["[   .   ] style_imgs"])
 
     if 1: # input image
+        print(f'|===> input shape  \n \
+            cwd: {os.getcwd()} \n \
+            args.video: {args.video} \n \
+            args.init_image_type: {args.init_image_type} \n \
+        ')          
         input_img = get_input_image(
             args.init_image_type, 
             content_img, 
@@ -1587,7 +1624,7 @@ def nnimg(args, kwargs):
             input_shape: {input_shape} \n \
         ")
 
-        model = Styler( input_shape = input_shape, args = args, )
+        model = GAN( input_shape = input_shape, args = args, )
 
     if 1: # fit
 
@@ -1608,7 +1645,7 @@ def nnani(args, kwargs):
     onutil.ddict(vars(args), 'args')
 
     if 1: # config
-        args.start_frame = 1
+        args.start_frame = 0
         args.end_frame = -1 # num_frames
         args.max_iterations = 10 # 1000
         args.first_frame_iterations = 20 # 2000
@@ -1622,6 +1659,7 @@ def nnani(args, kwargs):
         args.max_iterations: {args.max_iterations} \n \
         args.style_imgs_files = {args.style_imgs_files} \n \
     ")
+
 
     if 1: # tree
 
@@ -1644,9 +1682,9 @@ def nnani(args, kwargs):
         os.makedirs(args.video_output_dir, exist_ok=True)
         os.makedirs(img_output_dir, exist_ok=True)
 
-        assert os.path.exists(video_input_path), f"input vide {video_input_path} does not exist"
+        assert os.path.exists(video_input_path), f'input vide {video_input_path} does not exist'
 
-    print(f"|===> nnani tree \n \
+    print(f'|===> nnani tree \n \
         cwd: {os.getcwd()} \n \
         args.video_file: {args.video_file} \n \
         content_filename: {content_filename} \n \
@@ -1654,14 +1692,13 @@ def nnani(args, kwargs):
         args.video_frames_dir: {args.video_frames_dir} \n \
         args.video_styled_dir: {args.video_styled_dir} \n \
         args.video_output_dir: {args.video_output_dir} \n \
-    ")
-
+    ')
 
     if 1: # vid => frames
-        print(f"|===> nnani vid to frames \n \
-        video_input_path: {video_input_path} \n \
-        args.video_frames_dir: {args.video_frames_dir} \n \
-        ")
+        print(f'|===> nnani vid to frames \n \
+            video_input_path: {video_input_path} \n \
+            args.video_frames_dir: {args.video_frames_dir} \n \
+        ')
         onvid.vid_to_frames(video_input_path, args.video_frames_dir, target = 1)
 
 
@@ -1681,8 +1718,8 @@ def nnani(args, kwargs):
         start_frame = found_q_frames + 1
     
         frame = args.start_frame
-        frame_name = args.content_frame_frmt.format(str(frame).zfill(args.zfill))
-        frame_img_path = os.path.join(args.video_frames_dir, frame_name) 
+        args.frame_name = args.content_frame_frmt.format(str(frame).zfill(args.zfill))
+        args.frame_img_path = os.path.join(args.video_frames_dir, args.frame_name) 
 
     print(f"|===> nnani video \n \
         cwd: {os.getcwd()} \n \
@@ -1701,75 +1738,111 @@ def nnani(args, kwargs):
         input_shape: {args.input_shape} \n \
         content_frame_frmt: {args.content_frame_frmt} \n \
         frame: {frame} \n \
-        frame_name: {frame_name} \n \
-        frame_img_path: {frame_img_path} \n \
+        args.frame_name: {args.frame_name} \n \
+        args.frame_img_path: {args.frame_img_path} \n \
     ")
 
-
     if 1: # content
-        content_frame = onfile.path_cv_pil(frame_img_path)
+        print(f'|===> get content  \n \
+            cwd: {os.getcwd()} \n \
+            content_frame: {args.frame_img_path} \n \
+        ')                
+        content_frame = onfile.path_cv_pil(args.frame_img_path)
         content_frame = onformat.pil_to_dnua(content_frame)
-        if 1 : onplot.pil_show_nua(content_frame)
+        if 1 : 
+            onplot.pil_show_nua(content_frame)
 
     if 1: # style
+        print(f'|===> get style  \n \
+            cwd: {os.getcwd()} \n \
+            args.style_imgs_files = {args.style_imgs_files} \n \
+        ')                
         style_imgs = get_style_cvis(content_frame, args)
         style_imgs = onformat.cvis_to_pils(style_imgs)
         style_imgs = onformat.pils_to_dnuas(style_imgs)
-        if 1 : onplot.pil_show_nuas(style_imgs)
+        if args.visual:
+            print(f'|---> vis styles')
+            onplot.pil_show_nuas(style_imgs, ["[   .   ] style_imgs"])
 
     if 1: # input shape
-        input_img = get_init_image(args.first_frame_type, content_frame, style_imgs, frame, args)
+        print(f'|===> input shape  \n \
+            cwd: {os.getcwd()} \n \
+            args.video: {args.video} \n \
+            args.first_frame_type: {args.first_frame_type} \n \
+            frame: {frame} \n \
+        ')                    
+        input_img = get_input_image(
+            args.first_frame_type, 
+            content_frame, 
+            style_imgs, 
+            frame, 
+            args
+        )
         b,w,h,c = np.shape(input_img)
         input_shape = (w,h,c)    
 
     print(f'|===> nnani  \n \
         cwd: {os.getcwd()} \n \
-        video_input_path: {video_input_path} \n \
-        img_output_dir: {args.img_output_dir} \n \
         content_filename: {content_filename} \n \
-        content_frame_type: {type(content_frame)} \n \
-        extension:  {extension} \n \
-        style_imgs_dir: {args.style_imgs_dir} \n \
-        style_imgs: {args.style_imgs_files} \n \
-        q_style_imgs: {len(args.style_imgs_files)} \n \
-        video_file: {args.video_file} \n \
-        video_output_dir: {args.video_output_dir} \n \
-        video:      {args.video} \n \
+        args.content_frame_frmt: {args.content_frame_frmt} \n \
+        content_frame shape: {np.shape(content_frame)} \n \
+        args.style_imgs_dir: {args.style_imgs_dir} \n \
+        args.style_imgs: ({len(args.style_imgs_files)}) {args.style_imgs_files} \n \
+        style_imgs shapes: {[np.shape(img) for img in style_imgs]} \n \
+        args.video_file: {args.video_file} \n \
+        args.video_output_dir: {args.video_output_dir} \n \
         args.video_frames_dir: {args.video_frames_dir} \n \
-        start_frame: {args.start_frame} \n \
-        end_frame:  {args.end_frame} \n \
-        num_frames: {num_frames} \n \
-        input_shape: {args.input_shape} \n \
-        content_frame_frmt: {args.content_frame_frmt} \n \
+        args.start_frame/end_frame: ({num_frames}) {args.start_frame} : {args.end_frame} \n \
+        args.input_img shape: {np.shape(input_img)} \n \
+        args.img_output_dir: {args.img_output_dir} \n \
     ')
 
     # _e_ !!!
     if 1: # model
-        args.video_output_dir = args.video_styled_dir
+        #args.video_output_dir = args.video_styled_dir
+        args.video_output_dir = args.video_output_dir
         args.img_output_dir = img_output_dir
 
         print(f"|===> nnani model \n \
             cwd: {os.getcwd()} \n \
+            input_shape: {input_shape} \n \
+            video_input_path: {video_input_path} \n \
             args.video_output_dir: {args.video_output_dir} \n \
             args.img_output_dir: {args.img_output_dir} \n \
         ")
 
-        model = Styler(
-            input_shape = input_shape,          
+        model = GAN(
+            #input_shape = input_shape,          
             args = args,
         )
+
 
     if 1: # fit
 
         args.max_iterations = args.frame_iterations
         for frame in range(args.start_frame, args.end_frame+1):
-            print("frame", frame)
-            print('\n---- RENDERING VIDEO FRAME: {}/{} ----\n'.format(frame, args.end_frame))
+            print(f'|===> RENDERING VIDEO FRAME ({args.first_frame_type}): {frame}/{args.end_frame} ----\n')
 
             if frame == args.start_frame:
-                input_img = get_init_image(args.first_frame_type, content_frame, style_imgs, frame, args)
+                print(f"|... start_frame input_img type: {type(input_img)}")
+                input_img = get_input_image(
+                    init_type=args.first_frame_type, 
+                    content_img=content_frame, 
+                    style_imgs=style_imgs, 
+                    frame=frame, 
+                    args=args
+                )
             else:
-                input_img = get_init_image(args.init_frame_type, content_frame, style_imgs, frame, args)
+                print(f"|... other_frame input_img type: {type(input_img)}")
+                input_img = get_input_image(
+                    init_type=args.init_frame_type, 
+                    content_img=content_frame, 
+                    style_imgs=style_imgs, 
+                    frame=frame, 
+                    args=args
+                )
+
+
             if 1:
                 onplot.pil_show_nua(input_img ,"init image")
 
@@ -1777,12 +1850,12 @@ def nnani(args, kwargs):
 
             model.fit( 
                 input_img, content_frame, style_imgs,
-                # frame = frame,
+                frame = frame,                
                 args = args,
             )
 
             tock = time.time()
-            print('Frame {} elapsed time: {}'.format(frame, tock - tick))    
+            print(f'|... frame {frame} elapsed time: {tock - tick}')    
 
 
 #   ******************
@@ -1994,7 +2067,7 @@ def nnvid(args, kwargs):
     args.content_frame_frmt = frame_format
 
     if 1: # model
-        model = Styler(
+        model = GAN(
             input_shape = input_shape,          
             args = args,
         )

@@ -217,6 +217,55 @@ def getxp(cp):
    
     return xp
 
+
+#   ******************
+#   FUNS SEGMENT
+#
+#   https://github.com/lllyasviel/DanbooRegion/blob/master/code/segment.py
+
+def go_vector(x):
+    return x[None, :, :, :]
+
+
+def go_flipped_vector(x):
+    a = go_vector(x)
+    b = np.fliplr(go_vector(np.fliplr(x))) # numpy.fliplr(m: marray_like) -> fndarray
+    c = np.flipud(go_vector(np.flipud(x)))
+    d = np.flipud(np.fliplr(go_vector(np.flipud(np.fliplr(x)))))
+    return (a + b + c + d) / 4.0
+
+
+def go_transposed_vector(x):
+    a = go_flipped_vector(x)
+    b = np.transpose(go_flipped_vector(np.transpose(x, [1, 0, 2])), [1, 0, 2])
+    return (a + b) / 2.0
+
+
+def get_fill(image):
+    labeled_array, num_features = label(image / 255)
+    filled_area = onlllyas.find_all(labeled_array)
+    return filled_area
+
+
+def up_fill(fills, cur_fill_map):
+    new_fillmap = cur_fill_map.copy()
+    padded_fillmap = np.pad(cur_fill_map, [[1, 1], [1, 1]], 'constant', constant_values=0)
+    max_id = np.max(cur_fill_map)
+    for item in fills:
+        points0 = padded_fillmap[(item[0] + 1, item[1] + 0)]
+        points1 = padded_fillmap[(item[0] + 1, item[1] + 2)]
+        points2 = padded_fillmap[(item[0] + 0, item[1] + 1)]
+        points3 = padded_fillmap[(item[0] + 2, item[1] + 1)]
+        all_points = np.concatenate([points0, points1, points2, points3], axis=0)
+        pointsets, pointcounts = np.unique(all_points[all_points > 0], return_counts=True)
+        if len(pointsets) == 1 and item[0].shape[0] < 128:
+            new_fillmap[item] = pointsets[0]
+        else:
+            max_id += 1
+            new_fillmap[item] = max_id
+    return new_fillmap
+
+
 #   ******************
 #   NETS
 #
@@ -511,7 +560,7 @@ class GAN(object):
         
     def restore_checkpoint(self, ckptidx=None, max_to_keep=5):
 
-        print(f'|---> model.restore_checkpoint \n \
+        print(f'|===> model.restore_checkpoint \n \
             self.checkpoint: {self.checkpoint} \n \
             self.ckptidx: {self.ckptidx} \n \
             self.ckpt_dir: {self.ckpt_dir} \n \
@@ -537,7 +586,7 @@ class GAN(object):
         elif int(self.ckptidx) >= 0:
             fromcheckpoint = os.path.join(self.ckpt_dir, f'{self.ckpt_prefix}{self.ckptidx}')
             self.ckptidx = self.ckptidx
-
+        print(f'\n |...> model.restore_checkpoint fet ckptidx {self.ckptidx} \n')
 
         if fromcheckpoint:
             self.checkpoint.restore(fromcheckpoint)
@@ -581,23 +630,24 @@ def path_to_dataset_11(pth, patt,
     return dataset
 
 
-def path_to_pair(path, height=None, width=None):
+def path_to_pair(path, height=None, width=None, exotor=1.2):
     print(f"|---> path_to_pair 11: {path}")	
     (img1, img2) = path_to_decoded(path)
 
-    (img1, img2) = imgs_process([img1, img2], height=256, width=256)	
+    (img1, img2) = imgs_process([img1, img2], height, width, exotor)	
 
     return (img1, img2)
 
 
 def path_to_decoded(path):
-    print(f'|---> path_to_decoded: {path}  ')		
-    image = tf.io.read_file(path) # => dtype=string
-    image = tf.image.decode_jpeg(image) # => shape=(256, 512, 3), dtype=uint8)
-    w = tf.shape(image)[1]
+    print(f'|---> path_to_decoded: {path}')
+    img = tf.io.read_file(path) # => dtype=string
+    if 0: print(f'|... img: {type(img)} {np.shape(img)}')    
+    img = tf.image.decode_jpeg(img) # => shape=(256, 512, 3), dtype=uint8)
+    w = tf.shape(img)[1]
     w = w // 2
-    img1 = image[:, :w, :] # real comes left 
-    img2 = image[:, w:, :] 
+    img1 = img[:, :w, :] # real comes left 
+    img2 = img[:, w:, :] 
     return (img2, img1)
 
 # Random jittering:
@@ -628,7 +678,8 @@ def probe_dataset_11(dataset, dst_dir):
 
 # ---------- 22
 def paths_to_dataset_22(pths, patts, 
-        batch_size=None, height=None, width=None, buffer_size=None):
+        batch_size=None, height=None, width=None, buffer_size=None,
+        exotor=1.2):
 
     print(f'|---> paths_to_dataset_22:   \n \
         pths: {pths} \n \
@@ -638,7 +689,7 @@ def paths_to_dataset_22(pths, patts,
         buffer_size: {buffer_size} \n \
         batch_size: {batch_size} \n \
     ')
-    lti_two = (lambda x,y: paths_to_pair(x, y, height, width))
+    lti_two = (lambda x,y: paths_to_pair(x, y, height, width, exotor))
 
     a = tf.data.Dataset.list_files(os.path.join(pths[0], patts[0]), shuffle=False)
     b = tf.data.Dataset.list_files(os.path.join(pths[1], patts[1]), shuffle=False)
@@ -658,25 +709,43 @@ def paths_to_dataset_22(pths, patts,
 
 # ----------
 
-def paths_to_pair(path1, path2, height=256, width=256):
+def paths_to_pair(path1, path2, height=256, width=256, exotor=1.0):
     print(f'|---> paths_to_pair (22): {path1} {path2}')
     (img1, img2) = paths_to_decoded([path1, path2])
 
-    if 1:
-        (img1, img2) = imgs_process([img1, img2], height=256, width=256)
-    else:
-        (img1, img2) = imgs_resize([img1, img2], int(1.2 * height), int(1.2 * width))
-        (img1, img2) = imgs_crop([img1, img2], height, width)
-        (img1, img2) = imgs_random_flip([img1, img2])
-        (img1, img2) = rgbs_to_nbas([img1, img2])
+    (img1, img2) = imgs_process([img1, img2], height, width, exotor)
 
     return (img1, img2)
 
 
-def imgs_process(imgs, height=256, width=256):
+def path_process(path, height=256, width=256, exotor=1.0, flip=0):
+    print(f'|---> path_process')
+
+    img = tf.io.read_file(path)
+    img = tf.image.decode_jpeg(img)
+    img = tf.cast(img, tf.float32)
+
+    img = img_process(img, height, width, exotor, flip)
+
+    return img
+
+def img_process(img, height=256, width=256, exotor=1.0, flip=0):
+    print(f'|---> img_process')
+
+    img = img_resize_with_tf(img, int(exotor * height), int(exotor * width))
+    img = img_crop(img, height, width)
+    if flip > 0:
+        img = img_random_flip(img)
+    img = onformat.rgb_to_nba(img)
+    img = img[np.newaxis,:,:,:]
+
+    return img
+
+
+def imgs_process(imgs, height=256, width=256, exotor=1.2):
     print(f'|---> imgs_process')
 
-    (img1, img2) = imgs_resize(imgs, int(1.2 * height), int(1.2 * width))
+    (img1, img2) = imgs_resize(imgs, int(exotor * height), int(exotor * width))
     (img1, img2) = imgs_crop([img1, img2], height, width)
     (img1, img2) = imgs_random_flip([img1, img2])
     (img1, img2) = rgbs_to_nbas([img1, img2])
@@ -684,10 +753,11 @@ def imgs_process(imgs, height=256, width=256):
     return (img1, img2)
 
 def paths_to_decoded(paths):
+    print(f'|---> paths_to_decoded: {paths}')    
     imgs = []
     for path in paths:
         img = tf.io.read_file(path) # => dtype=string
-        print(f'|... img: {type(img)} {np.shape(img)}')
+        if 0: print(f'|... img: {type(img)} {np.shape(img)}')
         img = tf.image.decode_jpeg(img) # => shape=(256, 512, 3), dtype=uint8)
         img = tf.cast(img, tf.float32)
         imgs.append(img)
@@ -718,6 +788,15 @@ def imgs_crop(imgs, height, width):
         stacked_image, size=[b, height, width, 3])
     return cropped_image[0], cropped_image[1] # _e_
 
+def img_crop(img, height, width):
+    imgs = [img]
+    print(f'|---> img_crop: {np.shape(imgs)}')	
+    stacked_image = tf.stack(imgs, axis=0)
+    b = len(imgs)
+    cropped_image = tf.image.random_crop(
+        stacked_image, size=[b, height, width, 3])
+    return cropped_image[0] # _e_
+
 def imgs_random_flip(imgs):
     print(f'|---> imgs_random_flip')	
     _imgs = []
@@ -726,6 +805,16 @@ def imgs_random_flip(imgs):
             item = tf.image.flip_left_right(item)
             _imgs.append(item)
     return imgs
+
+def img_random_flip(img):
+    imgs = [img]
+    print(f'|---> img_random_flip')	
+    _imgs = []
+    if tf.random.uniform(()) > 0.5: # random mirroring
+        for item in imgs:
+            item = tf.image.flip_left_right(item)
+            _imgs.append(item)
+    return imgs[0]
 
 def pair_resize(img1, img2, height, width):
     print(f'|---> pair_resize: ')		
@@ -1041,6 +1130,7 @@ def nndanboo(args, kwargs):
 
         args.data_train_dir = os.path.join(args.data_dir, 'train')
         args.data_test_dir = os.path.join(args.data_dir, 'test')
+        args.data_val_dir = os.path.join(args.data_dir, 'val')
 
         if onutil.incolab():
             args.ckpt_dir = args.models_dir
@@ -1053,8 +1143,10 @@ def nndanboo(args, kwargs):
         args.data_dir = os.path.join(args.data_dir, '') # in project dir
         args.data_train_pict_dir = os.path.join(args.data_train_dir, 'pict')
         args.data_train_draw_dir = os.path.join(args.data_train_dir, 'draw')
+
         args.data_test_pict_dir = os.path.join(args.data_test_dir, 'pict')
         args.data_test_draw_dir = os.path.join(args.data_test_dir, 'draw')
+        args.data_test_predict_dir = os.path.join(args.data_test_dir, 'predict')
 
 
         print(f"|---> nndanboo tree:  \n \
@@ -1074,6 +1166,7 @@ def nndanboo(args, kwargs):
         args.data_train_dir (regions): {args.data_train_dir}, {onfile.qfiles(args.data_train_dir, '*.region.png')} \n \
         args.data_train_dir (skels): {args.data_train_dir}, {onfile.qfiles(args.data_train_dir, '*.skeleton.png')} \n \
         args.data_test_dir: {args.data_test_dir}, {onfile.qfiles(args.data_test_dir, '*.png')}\n \
+        args.data_val_dir: {args.data_val_dir}, {onfile.qfiles(args.data_val_dir, '*.png')}\n \
         ")
 
 
@@ -1104,6 +1197,7 @@ def nndanboo(args, kwargs):
         os.makedirs(args.data_test_dir, exist_ok=True) 
         os.makedirs(args.data_test_pict_dir, exist_ok=True) 
         os.makedirs(args.data_test_draw_dir, exist_ok=True) 
+        os.makedirs(args.data_test_predict_dir, exist_ok=True) 
 
 
     if 1: # config
@@ -1222,6 +1316,7 @@ def nndanboo(args, kwargs):
             print(f'|... test no processFolder !!!!. files already there ')
 
 
+
     if 0: # probe images to skeletons
 
         print(f'|---> skeletonize test png')
@@ -1333,40 +1428,204 @@ def nndanboo(args, kwargs):
             results_dir = args.results_dir,
             ckpt_dir = args.ckpt_dir,
             ckpt_prefix = args.ckpt_prefix,
+            ckptidx = -1,   # ****
             input_shape = args.input_shape,
             output_shape = args.input_shape,
         )
     
 
-    # 3. test model
+    # 3. segment
     
     if 1:	# python segment.py ./emilia.jpg
+
         #path = os.path.join(args.code_dir, 'emilia.jpg')
-        path = os.path.join(args.code_dir, 'danimage.jpg')
-        assert os.path.exists(path), f"{path} could not be found"
+        path = os.path.join(args.code_dir, 'danimage.jpg')   
+        path = os.path.join(args.code_dir, 'danskel.jpg')           
+        assert os.path.exists(path), f'{path} could not be found'
 
-        img = tf.io.read_file(path)
-        img = tf.image.decode_jpeg(img)
-        img = tf.cast(img, tf.float32)
-        img = tf.image.resize(img, [512, 512])
-        img = onformat.rgb_to_nba(img)
-        img = img[np.newaxis,:,:,:]
+        basename = os.path.basename(path)
+        print(f'|===> segment : {path}')
 
-        img = model.generator(img)	
+        #raw_img = cv2.imread(path, cv2.IMREAD_GRAYSCALE) # go_srcnn
+        raw_img = cv2.imread(path) # go_srcnn
+        raw_img = onlllyas.min_resize(raw_img, 512)
+        raw_img = raw_img.clip(0, 255)
+        raw_img = raw_img.astype(np.uint8)
 
-        img = onformat.nnba_to_rgb(img)
+        raw_img = raw_img[np.newaxis,:,:,:]
+        raw_img = model.generator(raw_img, training=True)
+        try:
+            from google.colab.patches import cv2_imshow
+            cv2_imshow(onformat.nnba_to_rgb(raw_img))
+            cv2.waitKey(0)            
+        except:
+            cv2.imshow(basename, onformat.nnba_to_rgb(raw_img))
+            cv2.waitKey(0)
+
+
+        img_2048 = onlllyas.min_resize(raw_img, 2048)        
+
+        #transposed = onlllyas.go_transposed_vector(onlllyas.mk_resize(raw_img, 64))
+        #height = onlllyas.d_resize(transposed, img_2048.shape) * 255.0
+        height = onlllyas.d_resize(go_transposed_vector(onlllyas.mk_resize(raw_img, 64)), img_2048.shape) * 255.0
+
+
+        final_height = height.copy()
+
+        height += (height - cv2.GaussianBlur(height, (0, 0), 3.0)) * 10.0
+        height = height.clip(0, 255).astype(np.uint8)
+
+        marker = height.copy()
+        marker[marker > 135] = 255
+        marker[marker < 255] = 0
+
+
+        #print("*************************************** marker", marker)
+        # scipy.ndimage.label:  non-zero values : features; zero values: background
+        #fills = onlllyas.get_fill(marker / 255)
+
+        def count_all(labeled_array, all_counts): # count labelled features
+            #labeled_array:  [[[0 0 1]
+            #                  [0 0 1]
+            #                  [0 0 1]
+            #                  ...
+            M = labeled_array.shape[0] # 2048
+            N = labeled_array.shape[1] # 2048
+            print("count_all MN ", M, N)
+            for x in range(M):
+                for y in range(N):
+                    i = labeled_array[x, y] - 1 # [-1 -1  0]
+                    print(f'count_all {x},{y}: {i}')
+                    if i > -1:
+                        all_counts[i] = all_counts[i] + 1
+            return
+
+
+        def trace_all(labeled_array, xs, ys, cs):
+            M = labeled_array.shape[0]
+            N = labeled_array.shape[1]
+            for x in range(M):
+                for y in range(N):
+                    current_label = labeled_array[x, y] - 1
+                    if current_label > -1:
+                        current_label_count = cs[current_label]
+                        xs[current_label][current_label_count] = x
+                        ys[current_label][current_label_count] = y
+                        cs[current_label] = current_label_count + 1
+            return
+
+        def find_all(labeled_array):
+            hist_size = int(np.max(labeled_array))
+            if hist_size == 0:
+                return []
+            all_counts = [0 for _ in range(hist_size)]
+            count_all(labeled_array, all_counts)
+            xs = [np.zeros(shape=(item, ), dtype=np.uint32) for item in all_counts]
+            ys = [np.zeros(shape=(item, ), dtype=np.uint32) for item in all_counts]
+            cs = [0 for item in all_counts]
+            trace_all(labeled_array, xs, ys, cs)
+            filled_area = []
+            for _ in range(hist_size):
+                filled_area.append((xs[_], ys[_]))
+            return filled_area
+
+        labeled_array, num_features = label(marker / 255)
+        fills = find_all(labeled_array)
+        # *********************************************
+
+
+        for fill in fills:
+            if fill[0].shape[0] < 64:
+                marker[fill] = 0
+        filter = np.array([
+            [0, 1, 0],
+            [1, 1, 1],
+            [0, 1, 0]],
+            dtype=np.uint8)
+        big_marker = cv2.erode(marker, filter, iterations=5)
+        fills = onlllyas.get_fill(big_marker / 255)
+        for fill in fills:
+            if fill[0].shape[0] < 64:
+                big_marker[fill] = 0
+        big_marker = cv2.dilate(big_marker, filter, iterations=5)
+        small_marker = marker.copy()
+        small_marker[big_marker > 127] = 0
+        fin_labels, nil = label(big_marker / 255)
+        fin_labels = up_fill(onlllyas.get_fill(small_marker), fin_labels)
+        water = cv2.watershed(img_2048.clip(0, 255).astype(np.uint8), fin_labels.astype(np.int32)) + 1
+        water = onlllyas.thinning(water)
+        all_region_indices = onlllyas.find_all(water)
+        regions = np.zeros_like(img_2048, dtype=np.uint8)
+        for region_indices in all_region_indices:
+            regions[region_indices] = np.random.randint(low=0, high=255, size=(3,)).clip(0, 255).astype(np.uint8)
+        result = np.zeros_like(img_2048, dtype=np.uint8)
+        for region_indices in all_region_indices:
+            result[region_indices] = np.median(img_2048[region_indices], axis=0)
+        
+        img = final_height.clip(0, 255).astype(np.uint8), regions.clip(0, 255).astype(np.uint8), result.clip(0, 255).astype(np.uint8)
+
+
+
+        #skeleton, region, flatten = segment(img)
+        #cv2.imwrite('./current_skeleton.png', skeleton)
+        #cv2.imwrite('./current_region.png', region)
+        #cv2.imwrite('./current_flatten.png', flatten)
+        #print('./current_skeleton.png')
+        #print('./current_region.png')
+        #print('./current_flatten.png')
+        #print('ok!')
+
+        #img = path_process(path, height=512, width=512)
+        #img = model.generator(img)	
+        #img = onformat.nnba_to_rgb(img)
 
         try:
             from google.colab.patches import cv2_imshow
             cv2_imshow(img)
             cv2.waitKey(0)            
         except:
-            cv2.imshow('emilia', img)
+            cv2.imshow(basename, img)
             cv2.waitKey(0)
 
 
+    # 3b. predict test images
     
-    if 1: # train
+    if 0:	# 
+        
+        paths = Onfile.folder_to_paths(args.data_test_pict_dir)
+
+
+        idx = 0
+        for n, path in enumerate(paths):
+            basename = os.path.basename(os.path.normpath(path))
+            print(f'|===> predict test images path {path}')
+
+            #img = tf.io.read_file(path)
+            #img = tf.image.decode_jpeg(img)
+            #img = tf.cast(img, tf.float32)
+            #img = tf.image.resize(img, [512, 512])
+            #img = onformat.rgb_to_nba(img)
+            #img = img[np.newaxis,:,:,:]
+
+            img = path_process(path, height=512, width=512)
+
+            img = model.generator(img, training=True) # _e_
+
+            img = onformat.nnba_to_rgb(img)
+            try:
+                from google.colab.patches import cv2_imshow
+                cv2_imshow(img)
+                cv2.waitKey(0)            
+            except:
+                cv2.imshow(basename, img)
+                cv2.waitKey(0)
+
+            save_image_path = os.path.join(args.data_test_predict_dir, basename)
+            print(f'|... save {save_image_path}')            
+            onfile.rgbs_to_file([img], scale=1, rows=1, save_path=save_image_path)
+
+  
+    if 0: # train
 
         if 1: #  data => dataset (train) # paths_to_dataset_22
 
@@ -1423,6 +1682,8 @@ def nndanboo(args, kwargs):
         print(f'|===> training loop:')
         model.fit(train_dataset, test_dataset, args)     # , summary_writer
 
+
+    print('|===> end danboo')
 
 #   ******************
 #   nnart
@@ -1615,6 +1876,7 @@ def nnart(args, kwargs):
         gan.fit(train_dataset, test_dataset, args)     # , summary_writer
 
     print(f'|===> end nnart')
+
 
 #   ******************
 #   nncrys - 22
@@ -2127,6 +2389,7 @@ def nncrys(args, kwargs):
                 onformat.nnba_to_rgb(prediction)
             ]
             onplot.pil_show_rgbs(display_list, scale=1, rows=1)   
+
 
     if 0: # train
 

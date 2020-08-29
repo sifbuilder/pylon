@@ -45,3 +45,10 @@ os.system(cmd)
 
 cmd = f'pip install windows-curses'
 os.system(cmd)
+
+# ## confignet https://github.com/microsoft/ConfigNet/blob/main/setup/requirements.txt
+#scipy==1.4.1
+#scikit-learn==0.20.0
+#tensorflow-gpu==2.1.0
+cmd = f'pip install azureml-sdk matplotlib numpy opencv-python pytest transformations'
+os.system(cmd)

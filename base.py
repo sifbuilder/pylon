@@ -413,14 +413,11 @@ class Onutil:
         url = f'{urlfolder}{gfolderid}'
         gdown.download(url, dst)		
 
-
     @staticmethod
     def gdownfile(link_name, dest):
         from google_drive_downloader import GoogleDriveDownloader as gdd
         print(f'|... gdownfile {link_name} to {dest}')		
         gdd.download_file_from_google_drive(file_id=link_name,dest_path=dest,unzip=True)
-
-    @staticmethod
 
     @staticmethod
     def tenzip(output_filename, source_dir, arcname=None):
@@ -456,12 +453,19 @@ class Onutil:
                 print(f'|... tar {tarpath} is tarfile {tarfile.is_tarfile(tarpath)}')
                 tar = tarfile.open(tarpath, "r:")
                 tar.extractall()
-                tar.close()    
+                tar.close()
             elif tarpath.endswith("tgz"):
                 print(f'|... tgz {tarpath} is tarfile {tarfile.is_tarfile(tarpath)}')                
                 tar = tarfile.open(tarpath, "r:gz")
                 tar.extractall()
-                tar.close()        
+                tar.close()
+            elif tarpath.endswith("zip"):
+                print(f'|... tar {tarpath} is zip {tarfile.is_tarfile(tarpath)}')
+                tar = tarfile.open(tarpath, "r:")
+                tar.extractall()
+                tar.close()                
+            else:
+                print(f'|... unsupported tarfile {tarpath}')
 
 
     @staticmethod
@@ -4869,13 +4873,18 @@ class Onlllyas:
 
 
     @staticmethod    
-    @njit
+    #@njit
     def count_all(labeled_array, all_counts):
-        M = labeled_array.shape[0]
-        N = labeled_array.shape[1]
+        #labeled_array:  [[[0 0 1]
+        #                  [0 0 1]
+        #                  [0 0 1]
+        #                  ...
+        M = labeled_array.shape[0] # 2048
+        N = labeled_array.shape[1] # 2048
+        print("count_all MN ", M, N)
         for x in range(M):
             for y in range(N):
-                i = labeled_array[x, y] - 1
+                i = labeled_array[x, y] - 1 # [-1 -1  0]
                 if i > -1:
                     all_counts[i] = all_counts[i] + 1
         return
@@ -5391,9 +5400,16 @@ class Onlllyas:
         b = np.transpose(Onlllyas.go_flipped_vector(np.transpose(x, [1, 0, 2])), [1, 0, 2])
         return (a + b) / 2.0
 
+
+    #https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.label.html
+    from scipy.ndimage import label
+
     @staticmethod 
     def get_fill(image):
         labeled_array, num_features = label(image / 255)
+        # num_features: 357
+        # labeled_array: <class 'numpy.ndarray'> (2048, 2048, 3)
+        # labeled_array: [[[0 0 1] [0 0 1] [0 0 1] ...
         filled_area = Onlllyas.find_all(labeled_array)
         return filled_area
 
