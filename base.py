@@ -699,7 +699,6 @@ class Onplot:
                 ax.set_axis_off()
 
         kwargs = {'pad_inches': .01} if fill else {}
-        print(f'plot_save_grid {len(ims)} {path}')
 
         if 'save' in do:
             if path:
@@ -939,17 +938,25 @@ class Onplot:
         if wait:
             cv2.waitKey(wait) 
 
-    @staticmethod   
-    def cv_img(img, title="img", wait=3000):
-        cv2.imshow(title, img)
-        cv2.waitKey(wait)  
-        cv2.destroyAllWindows()
 
     @staticmethod   
     def cv_nba(img, title="img", wait=0):
         img = Onformat.nnba_to_rgb(img)
         cv2.imshow(title, img)
         cv2.waitKey(0)
+
+    @staticmethod   
+    def cv_img(img, title="img", wait=0):
+        if Onutil.incolab():
+            from google.colab.patches import cv2_imshow
+            cv2_imshow(img)
+            cv2.waitKey(wait)
+            cv2.destroyAllWindows()
+        else:
+            cv2.imshow(title, img)
+            cv2.waitKey(wait)
+            cv2.destroyAllWindows()
+
 
 #   ******************
 #   FUNS FORMAT
