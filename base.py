@@ -179,10 +179,8 @@ class Ontree:
         gedir = os.path.join(cp["local_prefix"])
 
 
-        print("*******************************")
         Onutil.ddict(cp, 'cp')
         print(labprefix, glab)
-        #exit()
 
         assert os.path.exists(gdata), f"gdata {gdata} does not exist"
         assert os.path.exists(gmodel), f"gmodel {gmodel} does not exist"
@@ -272,6 +270,43 @@ class Onutil:
         if os.path.exists('/content'):
             res = True
         return res
+
+    @staticmethod
+    def conda():
+
+        ## StyleGAN:
+        cmd = f'pip install pillow numpy moviepy scipy opencv-python lmdb matplotlib'
+        os.system(cmd)
+
+        cmd = f'pip install cmake'
+        os.system(cmd)
+
+        cmd = f'pip install dlib'
+        os.system(cmd)
+
+        cmd = f'pip install ipython gdown'
+        os.system(cmd)
+
+        # ## lllyasviel
+        cmd = f'pip install numba scikit-image scikit-learn'
+        os.system(cmd)
+
+        # ## 
+        cmd = f'pip install cython h5py Pillow'
+        os.system(cmd)
+
+        cmd = f'pip install -U gradient'
+        os.system(cmd)
+
+        cmd = f'pip install windows-curses'
+        os.system(cmd)
+
+        # ## confignet https://github.com/microsoft/ConfigNet/blob/main/setup/requirements.txt
+        #scipy==1.4.1
+        #scikit-learn==0.20.0
+        #tensorflow-gpu==2.1.0
+        cmd = f'pip install azureml-sdk matplotlib numpy opencv-python pytest transformations'
+        os.system(cmd)
 
     @staticmethod
     def pargs(cp):
@@ -601,7 +636,10 @@ class Onplot:
     @staticmethod    
     def pil_show_nua(img, title=""):
         img = np.asarray(img)
-        img = np.clip(img, 0, 1).astype('float32')        
+        if np.ndim(img)>3:
+            assert img.shape[0] == 1
+            rgb = img[0]        
+        #img = np.clip(img, 0, 1).astype('float32')        
         img = Onformat.nua_to_pil(img)
         Onplot.pil_show_pil(img, title)
 
@@ -932,6 +970,15 @@ class Onplot:
             Onplot.cv_rgb(img_arr)
 
     @staticmethod   
+    def cv_path(path, size = 512, title='img', wait=2000):
+        img = cv2.imread(path, cv2.IMREAD_COLOR)
+        img = cv2.resize(img, (size, int((np.shape(img)[0]/np.shape(img)[1]) * size)))
+        img = Onvgg.vgg_preprocess(img)
+        img = Onvgg.vgg_deprocess(img)
+        cv2.imshow(title, img) # keep open per wait
+        cv2.waitKey(wait)
+
+
     def cv_rgb(rgb, wait=2000):
         rgb = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
         cv2.imshow('img', rgb)
@@ -1096,7 +1143,7 @@ class Onformat:
         return img
 
     @staticmethod
-    def img_resize_with_tf(image, width, height):
+    def tnua_resize(image, width, height):
         image = tf.cast(image, tf.float32)
         image = tf.image.resize(image, (width, height))
         # image = image[None, ...]

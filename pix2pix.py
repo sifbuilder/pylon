@@ -725,7 +725,7 @@ def path_process(path, height=256, width=256, exotor=1.0, flip=0):
 def img_process(img, height=256, width=256, exotor=1.0, flip=0):
     print(f'|---> img_process')
 
-    img = img_resize_with_tf(img, int(exotor * height), int(exotor * width))
+    img = tnua_resize(img, int(exotor * height), int(exotor * width))
     img = img_crop(img, height, width)
     if flip > 0:
         img = img_random_flip(img)
@@ -757,8 +757,8 @@ def paths_to_decoded(paths):
         imgs.append(img)
     return imgs
 
-def img_resize_with_tf(img, height, width, method=tf.image.ResizeMethod.NEAREST_NEIGHBOR):
-    print(f'|---> img_resize_with_tf {np.shape(img)} ')			
+def tnua_resize(img, height, width, method=tf.image.ResizeMethod.NEAREST_NEIGHBOR):
+    print(f'|---> tnua_resize {np.shape(img)} ')			
     img = tf.image.resize(img, [height, width],
         method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
     return img
@@ -768,7 +768,7 @@ def imgs_resize_with_tf(imgs, height, width, method=tf.image.ResizeMethod.AREA):
     res = []
     for i,img in enumerate(imgs):
         print(f'|... imgs_resize_with_tf {i} {np.shape(img)}')
-        img = img_resize_with_tf(img, height, width, method)
+        img = tnua_resize(img, height, width, method)
         res.append(img)		
     return res
 

@@ -1360,6 +1360,7 @@ class GAN(tf.keras.models.Model):
         max_epochs = args.max_epochs
         steps_per_epoch = args.steps_per_epoch
         video = args.video
+        visual = args.visual
         verbose = args.verbose
         video_output_dir = args.video_output_dir
         img_output_dir = args.img_output_dir
@@ -1369,36 +1370,55 @@ class GAN(tf.keras.models.Model):
         zfill = args.zfill
         show_fit_imgs = args.show_fit_imgs
 
+        train_step = self.train_step
+
+        image = tf.Variable(input_img)   
+        self.image = image
+
         print(f'|===> fit \n \
             max_epochs: {max_epochs} \n \
             steps_per_epoch: {steps_per_epoch} \n \
+            train_step: {train_step} \n \
             input_img shape: {np.shape(input_img)} \n \
             content_img shape: {np.shape(content_img)} \n \
             style_imgs shape: {[np.shape(img) for img in style_imgs]} \n \
+            combo_img shape: {type(self.image)} {np.shape(self.image)} \n \
         ')
-        train_step = self.train_step
 
-        # # ============
-   
-        image = tf.Variable(input_img)   
-        self.image = image
+
+        if 1 and visual:
+            print(f'|---> pil input_img')
+            if 0: onplot.pil_show_nua(input_img)        
+
+            print(f'|---> pil content_img')
+            if 0: onplot.pil_show_nua(content_img)        
+
+            print(f'|---> pil style_imgs')
+            if 0: onplot.pil_show_nuas(style_imgs)   
+
+            print(f'|---> pil combo_img')
+            onplot.pil_show_nua(self.image)
+
 
         # # ============
 
         start = time.time()
 
-        step = 0
-        if 0: print(f"[   .   ] display input image {step} image")
-        img = onformat.nua_to_pil(image)
-        img = ondata.pil_resize(img, (256,256))
-        img.show()
+        #if 0: print(f"[   .   ] display input image {step} image")
+        #img = onformat.nua_to_pil(image)
+        #img = ondata.pil_resize(img, (256,256))
+        #img.show()
 
         for epoch in range(max_epochs):
+            step = 0
             for step_in_epoch in range(steps_per_epoch):
+                print(f'|---> epoch.step: {epoch}.{step}')
                 step += 1
 
                 # ==========================================
+
                 train_step(image, content_img, style_imgs, args)
+
                 # =========================================
 
                 print(".", end='')
@@ -1409,28 +1429,33 @@ class GAN(tf.keras.models.Model):
                         # display image per epoch _e_
                         display.clear_output(wait=True)
                         print(f"[   .   ] display in step {step} image")
-                        display.display(onformat.nua_to_pil(image))
+                        display.display(onformat.nua_to_pil(self.image))
                     except:
                         print("could not display epoch images")
                 else:
                     print(f"[   .   ] show epoch {epoch} image")
-                    img = onformat.nua_to_pil(image)
+                    img = onformat.nua_to_pil(self.image)
                     img.show()
 
             # write image per epoch
             img_name = image_epoch_format.format(str(epoch).zfill(zfill))        
             img_path = os.path.join(img_output_dir, img_name)
-            onfile.pil_to_file_with_cv(img_path, img)
+            #onfile.pil_to_file_with_cv(img_path, self.image)
             
-            write_image_output(
-                output_img = onformat.nua_to_pil(image), 
-                content_img = onformat.nua_to_pil(content_img), 
-                style_imgs = onformat.dnuas_to_pils(style_imgs), 
-                init_img = onformat.nua_to_pil(input_img),
-                img_output_dir = img_output_dir, # results_dir _e_ *****
-                max_epochs = max_epochs, # results_dir _e_ *****
-                args = args,
-            )
+            if 0:
+                write_image_output(
+                    output_img = onformat.nua_to_pil(self.image), 
+                    content_img = onformat.nua_to_pil(content_img), 
+                    style_imgs = onformat.dnuas_to_pils(style_imgs), 
+                    init_img = onformat.nua_to_pil(input_img),
+                    img_output_dir = img_output_dir, # results_dir _e_ *****
+                    max_epochs = max_epochs, # results_dir _e_ *****
+                    args = args,
+                )
+
+            if 1 and visual:
+                print(f'|---> pil combo_img epoch " {epoch}')
+                onplot.pil_show_nua(self.image)
 
         if video:
             frame_name = args.content_frame_frmt.format(str(frame).zfill(zfill))
@@ -1497,7 +1522,7 @@ def nnimg(args, kwargs):
     if 1: # config
 
         args.max_epochs = 100
-        args.steps_per_epoch = 10
+        args.steps_per_epoch = 1
         args.total_variation_weight = 0.001
         args.content_imgs_weights = [1.0]
         args.content_layers_weights = [2.5e-08]
@@ -1558,17 +1583,14 @@ def nnimg(args, kwargs):
             content_shape: {np.shape(content_img)} \n \
         ")
     
-    if args.visual: 
-        print(f'|---> vis content')
-        onplot.pil_show_nua(content_img)
-    if 0: # show content image
+    if 0 and args.visual: 
+        print(f'|---> pil content img')
+        onplot.pil_show_nua(content_img) # non interrupt
+
+    if 0 and args.visual: # show content image
+        print(f'|---> cv content img')
         content_img_path = os.path.join(args.content_imgs_dir, args.content_img_file)
-        img = cv2.imread(content_img_path, cv2.IMREAD_COLOR)
-        img = cv2.resize(img, (512, int((np.shape(img)[0]/np.shape(img)[1]) * 512)))
-        img = onvgg.vgg_preprocess(img)
-        img = onvgg.vgg_deprocess(img)
-        cv2.imshow('img', img)
-        cv2.waitKey(1000)    
+        onplot.cv_path(content_img_path, size = 512, title='content img', wait=2000)
 
     if 1: #   input image: (422, 512, 3) <class 'numpy.ndarray'> [[[ 99 165 160]
         init_path = os.path.join(args.init_img_dir, args.init_img_name)
@@ -1578,7 +1600,8 @@ def nnimg(args, kwargs):
             args.content_imgs_dir: {args.content_imgs_dir} \n \
             init_shape: {np.shape(init_image)} \n \
         ")
-        if args.visual:
+
+        if 0 and args.visual:
             print(f'|---> vis init')
             onplot.pil_show_nua(init_image, "[   .   ] init_image")
 
@@ -1589,7 +1612,7 @@ def nnimg(args, kwargs):
             args.style_imgs_dir: {args.style_imgs_dir} \n \
             shapes: {[str(np.shape(style_imgs[i])) for i,img in enumerate(style_imgs)]} \n \
         ")
-        if args.visual:
+        if 0 and args.visual:
             print(f'|---> vis styles')
             onplot.pil_show_nuas(style_imgs, ["[   .   ] style_imgs"])
 
@@ -1599,7 +1622,7 @@ def nnimg(args, kwargs):
             args.video: {args.video} \n \
             args.init_image_type: {args.init_image_type} \n \
         ')          
-        input_img = get_input_image(
+        input_img = get_input_image( # (1, 512, 512, 3)
             args.init_image_type, 
             content_img, 
             style_imgs,
@@ -1609,12 +1632,17 @@ def nnimg(args, kwargs):
             args.video_output_dir, 
             args.content_frame_frmt,
         )
-        if args.visual:
+
+        input_img = onformat.tnua_resize(input_img, args.max_size, args.max_size)
+
+        if 1 and args.visual:
             onplot.pil_show_nua(input_img, "[   .   ] input_img")
         if 1:   # imgs props
             print(f"|===> nnimg: input \n \
                 input shape: {np.shape(input_img)} \n \
-        ")        
+        ")
+
+
 
     if 1: # model
         b,w,h,c = np.shape(input_img)
@@ -1629,7 +1657,10 @@ def nnimg(args, kwargs):
     if 1: # fit
 
         print(f"|===> fit   \n ")
-        model.fit(input_img, content_img, style_imgs, args)
+        model.fit(input_img, content_img, style_imgs, 
+            frame= None,
+            args = args
+        )
 
 
 #   *******************
