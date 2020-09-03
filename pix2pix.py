@@ -601,18 +601,18 @@ class GAN(object):
 #
 #   ******************
 
-
-# ----------
-
 def path_to_pair(path, height=None, width=None, exotor=1.2):
     print(f"|---> path_to_pair 11: {path}")	
-    (img1, img2) = path_to_decoded(path)
-    imgs = imgs_process([img1, img2], height, width, exotor)
+    imgs = path_to_decoded(path)
+    imgs = imgs_process(imgs, height, width, exotor)
+    return (imgs)
 
-    print("************ path_to_pair", np.shape(imgs))
-    print("************ path_to_pair 0", np.shape(imgs[0]))
 
-    return (imgs[0], imgs[1])
+def paths_to_pair(paths, height=256, width=256, exotor=1.0):
+    print(f'|---> paths_to_pair (22): {paths}')
+    imgs = paths_to_decoded(paths)
+    imgs = imgs_process(imgs, height, width, exotor)
+    return imgs
 
 
 def path_to_decoded(path):
@@ -652,7 +652,6 @@ def probe_dataset_11(dataset, dst_dir):
         i += 1
 
 
-# ----------
 def paths_to_dataset(pths, patts, 
         batch_size=None, height=None, width=None, buffer_size=None,
         exotor=1.2):
@@ -673,14 +672,14 @@ def paths_to_dataset(pths, patts,
 
     if pathsIsArr and pattsIsArr: # arrays 22 
         print(f'|---> paths_to_dataset 22')
-        lti_two = (lambda x,y: paths_to_pair(x, y, height, width, exotor))
+        lti_two = (lambda x: paths_to_pair(x, height, width, exotor))
 
         a = tf.data.Dataset.list_files(os.path.join(pths[0], patts[0]), shuffle=False)
         b = tf.data.Dataset.list_files(os.path.join(pths[1], patts[1]), shuffle=False)
         c = tf.data.Dataset.zip((a, b))
 
         # each element in the dataset is a list of two imgs
-        dataset = c.map(lambda x,y: lti_two(x,y), num_parallel_calls=tf.data.experimental.AUTOTUNE)
+        dataset = c.map(lambda x,y: lti_two([x,y]), num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
     elif not pathsIsArr and not pattsIsArr: # not arrays 11
         print(f'|---> paths_to_dataset 11')
@@ -702,25 +701,16 @@ def paths_to_dataset(pths, patts,
     return dataset
 
 
-# ----------
-
-def paths_to_pair(path1, path2, height=256, width=256, exotor=1.0):
-    print(f'|---> paths_to_pair (22): {path1} {path2}')
-    (img1, img2) = paths_to_decoded([path1, path2])
-    (img1, img2) = imgs_process([img1, img2], height, width, exotor)
-    return (img1, img2)
-
-
 def path_process(path, height=256, width=256, exotor=1.0, flip=0):
     print(f'|---> path_process')
 
     img = tf.io.read_file(path)
     img = tf.image.decode_jpeg(img)
     img = tf.cast(img, tf.float32)
-
     img = img_process(img, height, width, exotor, flip)
 
     return img
+
 
 def img_process(img, height=256, width=256, exotor=1.0, flip=0):
     print(f'|---> img_process')
@@ -729,8 +719,7 @@ def img_process(img, height=256, width=256, exotor=1.0, flip=0):
     img = img_crop(img, height, width)
     if flip > 0:
         img = img_random_flip(img)
-    img = onformat.rgb_to_nba(img)
-    
+    img = onformat.rgb_to_nba(img)  
 
     return img
 
@@ -856,38 +845,38 @@ def path_to_dataset_from_src(path, patt,
 
 # ----
 # https://github.com/phillipi/pix2pix
-def load_predefined_image_data_by_task_name(task_name,predefined_task_name_list=None,):
-    print(f"|---> load_predefined_image_data_by_task_name: {task_name}")
+def load_predefined_image_data_by_task_name(task_name,
+                                            predefined_task_name_list=None,):
 
     """Data from https://people.eecs.berkeley.edu/~tinghuiz/projects/pix2pix/datasets/
     View sample images here, https://github.com/yuanxiaosc/DeepNude-an-Image-to-Image-technology/tree/master/Pix2Pix"""
+    print(f"|---> load_predefined_image_data_by_task_name: {task_name}") 
 
-    if task_name in predefined_task_name_list:
-            _URL = f'https://people.eecs.berkeley.edu/~tinghuiz/projects/pix2pix/datasets/{task_name}.tar.gz'
-            path_to_zip = tf.keras.utils.get_file('edges2shoes.tar.gz', origin=_URL, extract=True)
-            PATH = os.path.join(os.path.dirname(path_to_zip), 'edges2shoes/')
-            print(f"Store {task_name} raw data to {PATH}")
+    if task_name in predefined_task_name_list: # 'edges2shoes.tar.gz'
+        _URL = f'https://people.eecs.berkeley.edu/~tinghuiz/projects/pix2pix/datasets/{task_name}.tar.gz'
+        path_to_zip = tf.keras.utils.get_file(f'{task_name}.tar.gz', origin=_URL, extract=True)
+        PATH = os.path.join(os.path.dirname(path_to_zip), f'{task_name}/')
+        print(f"Store {task_name} raw data to {PATH}")
     else:
-            raise ValueError(f"Predefined tasks do not include this {task_name} task!")
+        raise ValueError(f"Predefined tasks do not include this {task_name} task!")
     return PATH
 
-def download_and_processing_pix2pix_dataset(
-        data_dir_or_predefined_task_name=None,
-        predefined_task_name_list=None,
-        args=None):
+def download_and_processing_pix2pix_dataset(data_dir_or_predefined_task_name=None,
+                                            predefined_task_name_list=None,
+                                            args=None):
     print(f'|---> download_and_processing_pix2pix_dataset: {data_dir_or_predefined_task_name}')
 
     if data_dir_or_predefined_task_name in predefined_task_name_list:
-            PATH = load_predefined_image_data_by_task_name(
-                    data_dir_or_predefined_task_name,
-                    predefined_task_name_list,
-                    )
-            print("|... prepare data from task_name")
+        PATH = load_predefined_image_data_by_task_name(
+                data_dir_or_predefined_task_name,
+                predefined_task_name_list,
+                )
+        print("|... prepare data from task_name")
     elif os.path.exists(data_dir_or_predefined_task_name):
-            PATH = data_dir_or_predefined_task_name
-            print("|... prepare data from data_dir")
+        PATH = data_dir_or_predefined_task_name
+        print("|... prepare data from data_dir")
     else:
-            raise ValueError("Task_name error and data_dir does not exist!")
+        raise ValueError("Task_name error and data_dir does not exist!")
 
 
 def getckptidx(ckptname): # ckpt-98, None, ckpt--1
@@ -2739,13 +2728,13 @@ def nnleonardo(args, kwargs):
 
         print("|===> probe generator with train image pair")
 
-        img1 = os.path.join(args.data_dir, 'train_A/da09_in.png')
-        img2 = os.path.join(args.data_dir, 'train_B/da09_re.png')
+        path1 = os.path.join(args.data_dir, 'train_A/da09_in.png')
+        path2 = os.path.join(args.data_dir, 'train_B/da09_re.png')
 
-        imgs = paths_to_pair(img1, img2, args.img_height, args.img_width)
+        imgs = paths_to_pair([path1, path2], args.img_height, args.img_width)
 
-        print("|... img1", type(img1), np.shape(img1))
-        print("|... img2", type(img2), np.shape(img2))
+        print("|... path1", type(path1), np.shape(path1))
+        print("|... path2", type(path2), np.shape(path2))
 
         img1 = tf.cast(imgs[0], tf.float32)[tf.newaxis,...]
         img2 = tf.cast(imgs[1], tf.float32)[tf.newaxis,...]

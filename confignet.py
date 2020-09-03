@@ -236,7 +236,9 @@ def getxp(cp):
 
 #   ******************
 #   nnmodel
-#   
+#
+
+
 def nnmodel(args, kwargs):
 
     args = onutil.pargs(vars(args))
@@ -274,6 +276,11 @@ def nnmodel(args, kwargs):
         args.patts:     		{args.patts}, \n \
     ")
 
+    
+    if 0: # conda
+        onutil.conda()
+ 
+
     if 1: # git
         onutil.get_git(args.AUTHOR, args.GITPOD, args.proj_dir)
 
@@ -297,6 +304,29 @@ def nnmodel(args, kwargs):
         args.visual:          {args.visual}, \n \
     ")
 
+
+    #from confignet import ConfigNet, LatentGAN, FaceImageNormalizer
+    #def process_images(image_path: str, resolution: int) -> List[np.ndarray]:
+    #    '''Load the input images and normalize them'''
+    #    if os.path.isfile(image_path):
+    #        img = cv2.imread(image_path)
+    #        img = FaceImageNormalizer.normalize_individual_image(img, (resolution, resolution))
+    #        return [img]
+    #    elif os.path.isdir(image_path):
+    #        FaceImageNormalizer.normalize_dataset_dir(image_path, pre_normalize=True,
+    #                                                output_image_shape=(resolution, resolution), write_done_file=False)
+    #        normalized_image_dir = os.path.join(image_path, "normalized")
+    #        image_paths = glob.glob(os.path.join(normalized_image_dir, "*.png"))
+    #        max_images = 200
+    #        image_paths = image_paths[:max_images]
+    #        if len(image_paths) == 0:
+    #            raise ValueError("No images in input directory")
+    #        imgs = []
+    #        for path in image_paths:
+    #            imgs.append(cv2.imread(path))
+    #        return imgs
+    #    else:
+    #        raise ValueError("Image path is neither directory nor file")
 
     if 1: # models.zip
         os.chdir(args.proj_dir)
@@ -345,7 +375,7 @@ def nnmodel(args, kwargs):
     ")
 
     if not os.path.exists(openface_local_path):
-        print("|... Downloading OpenFace")
+        print('|... Downloading OpenFace')
         response = requests.get(OPENFACE)
         with open(openface_filename, "wb") as fp:
             fp.write(response.content)
@@ -366,12 +396,13 @@ def nnmodel(args, kwargs):
     imgs_dir = os.path.join(args.proj_dir, 'assets')
     imgs_dir = os.path.join(args.gdata, 'threefaces', 'stock_photo1.jpg')
     cmd = f'python evaluation/confignet_demo.py --image_path "{imgs_dir}"'
-    
+
+
     setup_dir = os.path.join(args.proj_dir, '')
     os.chdir(setup_dir)
     if args.verbose: print(f"|---> confignet_demo :   \n \
-        cwd:     				{os.getcwd()} \n \
-        cmd:     				{cmd} \n \
+        cwd:  {os.getcwd()} \n \
+        cmd:  {cmd} \n \
     ")
     os.system(cmd)
 

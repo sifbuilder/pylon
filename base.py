@@ -1318,6 +1318,7 @@ class Onfile:
                 img = cv2.resize(img, dsize=(mx, int(h)), interpolation=cv2.INTER_AREA)
             return img
 
+
     @staticmethod
     def path_cv_pil(path):
         img = cv2.imread(path, cv2.IMREAD_COLOR)
