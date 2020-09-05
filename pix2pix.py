@@ -601,30 +601,51 @@ class GAN(object):
 #
 #   ******************
 
-def path_to_pair(path, height=None, width=None, exotor=1.2):
+def path_to_pair(path, height=None, width=None, exotor=1.0):
     print(f"|---> path_to_pair 11: {path}")	
     imgs = path_to_decoded(path)
     imgs = imgs_process(imgs, height, width, exotor)
-    return (imgs)
+    return imgs
 
-
-def paths_to_pair(paths, height=256, width=256, exotor=1.0):
+def paths_to_pair(paths, height=None, width=None, exotor=1.0):
     print(f'|---> paths_to_pair (22): {paths}')
     imgs = paths_to_decoded(paths)
     imgs = imgs_process(imgs, height, width, exotor)
     return imgs
 
+def path_to_decoded(path, rate=0.5):
+    print(f'|---> ********************** path_to_decoded: {path}')
 
-def path_to_decoded(path):
-    print(f'|---> path_to_decoded: {path}')
+    imgs = []
     img = tf.io.read_file(path) # => dtype=string
-    if 0: print(f'|... img: {type(img)} {np.shape(img)}')    
+    if 0: 
+        print(f'|... img: {type(img)} {np.shape(img)}')    
     img = tf.image.decode_jpeg(img) # => shape=(256, 512, 3), dtype=uint8)
+    img = tf.cast(img, tf.float32)
+
     w = tf.shape(img)[1]
     w = w // 2
+
     img1 = img[:, :w, :] # real comes left 
+    imgs.append(img1)
+
     img2 = img[:, w:, :] 
-    return (img2, img1)
+    imgs.append(img2)
+
+    return imgs
+
+def paths_to_decoded(paths, rate=2):
+    print(f'|---> paths_to_decoded: {paths}')
+
+    imgs = []
+    for path in paths:
+        img = tf.io.read_file(path) # => dtype=string
+        if 0: 
+            print(f'|... img: {type(img)} {np.shape(img)}')
+        img = tf.image.decode_jpeg(img) # => shape=(256, 512, 3), dtype=uint8)
+        img = tf.cast(img, tf.float32)
+        imgs.append(img)
+    return imgs
 
 # Random jittering:
 # Resize an image to bigger height and width
@@ -650,6 +671,26 @@ def probe_dataset_11(dataset, dst_dir):
         plt.savefig(os.path.join(dst_dir, f'{i}_example_target.png'))
 
         i += 1
+
+
+def path_to_dataset_from_src(path, patt, 
+        batch_size=None, height=None, width=None, buffer_size=None):
+
+    print(f'|---> path_to_dataset_from_src ')
+
+    if type(patt) == str:
+        print('|...> get files from one source: input and real in one file')
+        #dataset = path_to_dataset_11(path, patt, 
+        dataset = paths_to_dataset(path, patt, 
+            height=height, width=width, buffer_size=buffer_size, batch_size=batch_size)
+
+    elif isinstance(patt, list): 
+        print('|...> get files from two sources')
+        #dataset = paths_to_dataset_22(path, patt, 
+        dataset = paths_to_dataset(path, patt, 
+            height=height, width=width, buffer_size=buffer_size, batch_size=batch_size)
+
+    return dataset
 
 
 def paths_to_dataset(pths, patts, 
@@ -724,26 +765,15 @@ def img_process(img, height=256, width=256, exotor=1.0, flip=0):
     return img
 
 
-def imgs_process(imgs, height=256, width=256, exotor=1.2):
+def imgs_process(imgs, height=256, width=256, exotor=1.0, flip=0):
     print(f'|---> imgs_process')
 
-    (img1, img2) = imgs_resize_with_tf(imgs, int(exotor * height), int(exotor * width))
-    (img1, img2) = imgs_crop([img1, img2], height, width)
-    (img1, img2) = imgs_random_flip([img1, img2])
-    (img1, img2) = rgbs_to_nbas([img1, img2])
+    imgs = imgs_resize_with_tf(imgs, int(exotor * height), int(exotor * width))
+    imgs = imgs_crop_random(imgs, height, width)
+    if flip > 0:
+        imgs = imgs_random_flip(imgs)
+    imgs = onformat.rgbs_to_nbas(imgs)
 
-    return (img1, img2)
-
-def paths_to_decoded(paths):
-    print(f'|---> paths_to_decoded: {paths}')    
-    imgs = []
-    for path in paths:
-        img = tf.io.read_file(path) # => dtype=string
-        if 0: 
-            print(f'|... img: {type(img)} {np.shape(img)}')
-        img = tf.image.decode_jpeg(img) # => shape=(256, 512, 3), dtype=uint8)
-        img = tf.cast(img, tf.float32)
-        imgs.append(img)
     return imgs
 
 def tnua_resize(img, height, width, method=tf.image.ResizeMethod.NEAREST_NEIGHBOR):
@@ -761,21 +791,6 @@ def imgs_resize_with_tf(imgs, height, width, method=tf.image.ResizeMethod.AREA):
         res.append(img)		
     return res
 
-def rgbs_to_nbas(imgs):
-    res = []
-    for img in imgs:
-        img = onformat.rgb_to_nba(img)
-        res.append(img)
-    return res
-
-def imgs_crop(imgs, height, width):
-    print(f'|---> imgs_crop: {np.shape(imgs)}')	
-    stacked_image = tf.stack(imgs, axis=0)
-    b = len(imgs)
-    cropped_image = tf.image.random_crop(
-        stacked_image, size=[b, height, width, 3])
-    return cropped_image[0], cropped_image[1] # _e_
-
 def img_crop(img, height, width):
     imgs = [img]
     print(f'|---> img_crop: {np.shape(imgs)}')	
@@ -784,6 +799,29 @@ def img_crop(img, height, width):
     cropped_image = tf.image.random_crop(
         stacked_image, size=[b, height, width, 3])
     return cropped_image[0] # _e_
+
+def img_crop_random(img, height, width):
+    shape = np.shape(img)
+    print(f'|---> img_crop_random {shape}, {height}, {width}')
+    	
+    img = tf.image.random_crop(img, size=[height, width, 3])
+    print(f'|... img_crop_random {np.shape(img)}, {height}, {width}')	
+    return img
+
+def imgs_crop_random(imgs, height, width):
+    print(f'|---> imgs_crop_random: {np.shape(imgs)}')	
+    stacked_images = tf.stack(imgs, axis=0)
+    b = len(imgs)
+    cropped_images = tf.image.random_crop( # Tensor
+        stacked_images, size=[b, height, width, 3])
+
+    res = cropped_images[0], cropped_images[1]  # _e_
+    return res
+
+def img_random_flip(img):
+    imgs = [img]
+    imgs = imgs_random_flip(imgs)
+    return imgs[0]
 
 def imgs_random_flip(imgs):
     print(f'|---> imgs_random_flip')	
@@ -794,54 +832,10 @@ def imgs_random_flip(imgs):
             _imgs.append(item)
     return imgs
 
-def img_random_flip(img):
-    imgs = [img]
-    print(f'|---> img_random_flip')	
-    _imgs = []
-    if tf.random.uniform(()) > 0.5: # random mirroring
-        for item in imgs:
-            item = tf.image.flip_left_right(item)
-            _imgs.append(item)
-    return imgs[0]
-
-def pair_resize(img1, img2, height, width):
-    print(f'|---> pair_resize: ')		
-    img1 = tf.image.resize(img1, [height, width],
-        method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-    img2 = tf.image.resize(img2, [height, width],
-        method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-    return img1, img2
-
-def img_crop_random(img, height, width, ):
-    shape = np.shape(img)
-    print(f'|---> img_crop_random {shape}, {height}, {width}')	
-    img = tf.image.random_crop(img, size=[height, width, 3])
-    print(f'|... img_crop_random {np.shape(img)}, {height}, {width}')	
-    return img
-
 def img_jitter_random(img, height, width):
     print(f'|---> img_jitter_random {np.shape(img)}')		
     img = img_crop_random(img, height, width)
     return img
-
-# ----
-def path_to_dataset_from_src(path, patt, 
-        batch_size=None, height=None, width=None, buffer_size=None):
-    print(f'|---> path_to_dataset_from_src ')
-
-    if type(patt) == str:
-        print('|...> get files from one source: input and real in one file')
-        #dataset = path_to_dataset_11(path, patt, 
-        dataset = paths_to_dataset(path, patt, 
-            height=height, width=width, buffer_size=buffer_size, batch_size=batch_size)
-
-    elif isinstance(patt, list): 
-        print('|...> get files from two sources')
-        #dataset = paths_to_dataset_22(path, patt, 
-        dataset = paths_to_dataset(path, patt, 
-            height=height, width=width, buffer_size=buffer_size, batch_size=batch_size)
-
-    return dataset
 
 # ----
 # https://github.com/phillipi/pix2pix
@@ -878,14 +872,6 @@ def download_and_processing_pix2pix_dataset(data_dir_or_predefined_task_name=Non
     else:
         raise ValueError("Task_name error and data_dir does not exist!")
 
-
-def getckptidx(ckptname): # ckpt-98, None, ckpt--1
-    idx = None
-    if ckptname:
-        m = re.search(r'([a-zA-Z_]*)-(.*)', ckptname)
-        if m and m.group(2):
-            idx = m.group(2)
-    return idx
 
 #   ******************
 #   CMDS
@@ -2253,14 +2239,14 @@ def nncrys(args, kwargs):
         for path in paths:
             filename = os.path.basename(path)
             ckpt = filename.split('.')[0] # {prefix}-{ckptidx}.index => {prefix}-{ckptidx}
-            ckptidx = getckptidx(ckpt)
+            ckptidx = oncheck.getckptidx(ckpt)
 
         ckptidxs = []
         for path in paths:
             filename = os.path.basename(path)
             infix = filename.split('.')[0]
 
-            ckptidx = getckptidx(infix)
+            ckptidx = oncheck.getckptidx(infix)
 
             ckptidxs.append(int(ckptidx)) # if None
         ckptidxs = sorted(ckptidxs)

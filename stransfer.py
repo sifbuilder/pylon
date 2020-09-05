@@ -15,7 +15,7 @@ import requests
 import zipfile
 import random
 import datetime
-		
+        
 from functools import partial
 from importlib import import_module
 
@@ -87,21 +87,22 @@ print(f'|===> {tf.__version__}')
 #
 #   ******************
 try:
-	# check if base.Onpyon is defined
-	var = Onpyon()
+    # check if base.Onpyon is defined
+    var = Onpyon()
 except NameError:
-	# Onpyon not defined
+    # Onpyon not defined
 
-	sys.path.append('../')  # if called from eon, modules are in parallel folder
-	sys.path.append('./')  #  if called from dnns, modules are in folder
+    sys.path.append('../')  # if called from eon, modules are in parallel folder
+    sys.path.append('./')  #  if called from dnns, modules are in folder
 
-	from base import *
+    from base import *
 
 onutil = Onutil()
 onplot = Onplot()
 onformat = Onformat()
 onfile = Onfile()
 onvid = Onvid()
+onimg = Onimg()
 ondata = Ondata()
 onset = Onset()
 onrecord = Onrecord()
@@ -116,7 +117,7 @@ onlllyas = Onlllyas()
 #   *******************
 
 def getap():
-	cp = {
+    cp = {
         "primecmd": 'nnani',        
 
         "MNAME": "stransfer",      
@@ -142,31 +143,31 @@ def getap():
         "gdrive_prefix": '/content/drive/My Drive',     
         "gcloud_prefix": '/content',     
 
-	}
+    }
 
-	local_prefix = os.path.abspath('')
-	try:
-			local_prefix = os.path.dirname(os.path.realpath(__file__)) # script dir
-	except:
-			pass
-	cp["local_prefix"] = local_prefix
+    local_prefix = os.path.abspath('')
+    try:
+            local_prefix = os.path.dirname(os.path.realpath(__file__)) # script dir
+    except:
+            pass
+    cp["local_prefix"] = local_prefix
 
 
-	tree = ontree.tree(cp)
-	for key in tree.keys():
-		cp[key] = tree[key]
+    tree = ontree.tree(cp)
+    for key in tree.keys():
+        cp[key] = tree[key]
 
-	hp = {
+    hp = {
         "verbose": 0,
         "visual": 1,
-	}
+    }
 
-	ap = {}
-	for key in cp.keys():
-		ap[key] = cp[key]
-	for key in hp.keys():
-		ap[key] = hp[key]
-	return ap
+    ap = {}
+    for key in cp.keys():
+        ap[key] = cp[key]
+    for key in hp.keys():
+        ap[key] = hp[key]
+    return ap
 
 
 def getxp(cp):
@@ -177,7 +178,7 @@ def getxp(cp):
         "model_include_top": 0,
         "model_classes": 1000,
 
-        "max_epochs": 100,
+        "max_epochs": 10,
         "steps_per_epoch": 1,
         "print_iterations": 10, #  50
         "max_iterations": 100, # 1000
@@ -208,7 +209,13 @@ def getxp(cp):
         "content_layer_weights": [1.0],
         "content_loss_function": 1,
         "content_weight": 5e0,
-        "content_frame_frmt": 'frame{}.jpg',
+        "frame_content_frmt": 'frame{}.jpg',
+
+        "content_imgs_weights": [1.0],
+        "content_layers_weights": [2.5e-08],
+        "content_loss_function": 1,
+        "content_weight": 5e0,
+        "content_weights_frmt": 'reliable_{}_{}.txt',
 
         "style_imgs_dir": cp["data_dir"],
         "style_scale": 1,
@@ -220,29 +227,34 @@ def getxp(cp):
         # "style_layers_weights": [1e-6 / 100],  
         # "style_layers_weights": [1e-2, 1e-2, 1e-2, 1e-2, 1e-2],
         "style_layers_weights": [0.2, 0.2, 0.2, 0.2, 0.2],
-        "style_mask_imgs": [],
         "style_weight": 1e4,
+        "style_imgs_weights": [1.0],
+        "style_layers_weights": [0.01, 0.01, 0.01, 0.01, 0.01],
+        "style_layers_weights": [0.2, 0.2, 0.2, 0.2, 0.2],
+        "style_weight": 1e4,
+        "style_mask": None,
 
         "max_size": 512,
         "input_shape": (224, 224, 3), # (512, 512, 3) # 
-        "first_frame_iterations": 2000,
-        "first_frame_type": 'content', # args.first_frame_type ['random', 'content', 'style'
+        "frame_first_iterations": 2000,
+        "frame_first_type": 'content', # args.frame_first_type ['random', 'content', 'style'
         "init_image_type": "content", # 'content','style','init','random','prev','prev_warped'
-        "init_frame_type": 'prev',
+        "frame_init_type": 'prev',
         "init_img_dir": cp["data_dir"],
         "init_image_type": "content",
-        "first_frame_iterations": 2000,
+        "frame_first_iterations": 2000,
         "init_img_type": 'content',
         "img_name": 'result',
 
-        "style_mask": None,
         "original_colors": None,
         "color_convert_type": 'yuv',
         "color_convert_time": 'after',
         "optimizer": 'adam', # 'lbfgs' # 
         
         # "total_variation_weight": 1e-6, # 300,
+        "total_variation_weight": 0.001,
         "total_variation_weight": 1e-3,
+
 
         # "video_input_dir": os.path.join(cp["proj_dir"], 'intput_vid'),        
         "video_input_dir": os.path.join(cp["data_dir"], ''),
@@ -261,15 +273,18 @@ def getxp(cp):
         # "video_path": os.path.join(video_dir, video_file),
         "backward_optical_flow_frmt": 'backward_{}_{}.flo',
         "forward_optical_flow_frmt": 'forward_{}_{}.flo',
-        "content_weights_frmt": 'reliable_{}_{}.txt',
         "video": 0,
 
         "frames_dir": os.path.join(cp["results_dir"], 'cromes/frames'),
-        "frames_dir": os.path.join(cp["lab"], "NewYork"),
         "frame_iterations": 800,
-        "start_frame": 0,
-        "end_frame": 9,
+        "frame_end": 9,
         "frame": None,    
+        "frame_start": 0,
+        "frame_end": -1, # num_frames
+        "frame_first_iterations": 20, # 2000
+        "frame_init_type": 'prev', # 'prev_warped'
+        "frame_content_frmt": 'frame{}.jpg',
+        "frame_first_type": 'content',
 
         "temporal_weight": 2e2,
 
@@ -306,10 +321,10 @@ def getxp(cp):
 #   ***************
 
 def frame_cv2_rgb_vgg(frame, frames_dir, args):
-    content_frame_frmt = args.content_frame_frmt
+    frame_content_frmt = args.frame_content_frmt
     max_size = args.max_size
     zfill = args.zfill
-    frame_name = args.content_frame_frmt.format(str(frame).zfill(zfill))
+    frame_name = args.frame_content_frmt.format(str(frame).zfill(zfill))
     frame_img_path = os.path.join(frames_dir, frame_name)
     print("frame_img_path", frame_img_path)
     img = cv2.imread(frame_img_path, cv2.IMREAD_COLOR)
@@ -414,11 +429,11 @@ def get_dense_Optical_Flow(path):
 def get_content_frame(frame, args):
         
     video_input_dir = args.video_input_dir
-    content_frame_frmt = args.content_frame_frmt
+    frame_content_frmt = args.frame_content_frmt
 
-    # content_frame_frmt = 'frame_{}.ppm' # args.content_frame_frmt
+    # frame_content_frmt = 'frame_{}.ppm' # args.frame_content_frmt
     zfill = 4 # args.zfill
-    frame_name = content_frame_frmt.format(str(frame).zfill(zfill))
+    frame_name = frame_content_frmt.format(str(frame).zfill(zfill))
     # path_to_img = os.path.join(video_input_dir, frame_name)
 
     # print("get_content_frame path", path_to_img)    
@@ -429,25 +444,6 @@ def get_content_frame(frame, args):
     return img
 
 
-#   *****************
-#   get_content_img:  load an image and limit its maximum dimension in pixels
-def get_content_image(content_img, content_imgs_dir='./', max_size=512):
-
-    path = os.path.join(content_imgs_dir, content_img)
-    # bgr image
-    img = cv2.imread(path, cv2.IMREAD_COLOR)
-
-    h, w, d = img.shape
-    mx = max_size
-    # resize if > max size
-    if h > w and h > mx:
-        w = (float(mx) / float(h)) * w
-        img = cv2.resize(img, dsize=(int(w), mx), interpolation=cv2.INTER_AREA)
-    if w > mx:
-        h = (float(mx) / float(w)) * h
-        img = cv2.resize(img, dsize=(mx, int(h)), interpolation=cv2.INTER_AREA)
-
-    return img
 
 
 def _get_style_images(content_img, args=None):
@@ -502,6 +498,11 @@ def cv2_frame(cvi, refimg, scale):
 
 
 def get_style_cvis(content_img, args):
+    print(f'|---> get_style_cvis  \n \
+        content_img: {args.style_imgs_files} \n \
+        args.style_imgs_dir: {args.style_imgs_dir} \n \
+    ')
+
     style_imgs=[]
     style_imgs_dir=args.style_imgs_dir
     max_size=args.max_size
@@ -513,6 +514,7 @@ def get_style_cvis(content_img, args):
     cvis = []
     for style_fn in args.style_imgs_files:
         path = os.path.join(style_imgs_dir, style_fn)
+        print(f'|...> get_style_cvis path {path}')        
         # bgr image
         cvi = cv2.imread(path, cv2.IMREAD_COLOR)
         img = cv2_frame(cvi, content_img, style_scale)
@@ -520,49 +522,6 @@ def get_style_cvis(content_img, args):
         # img = onvgg.vgg_preprocess(img)
         cvis.append(img)
     return cvis
-
-
-def _get_init_image(init_img, init_img_dir='./', max_size=512):
-    path = os.path.join(init_img_dir, init_img)
-    # bgr image
-    img = cv2.imread(path, cv2.IMREAD_COLOR)
-    check_file(img, path)
-
-    h, w, d = img.shape
-    mx = max_size
-    # resize if > max size
-    if h > w and h > mx:
-        w = (float(mx) / float(h)) * w
-        img = cv2.resize(img, dsize=(int(w), mx), interpolation=cv2.INTER_AREA)
-    if w > mx:
-        h = (float(mx) / float(w)) * h
-        img = cv2.resize(img, dsize=(mx, int(h)), interpolation=cv2.INTER_AREA)
-
-    return img
-
-#def get_init_image(
-#        init_type, 
-#        content_img, 
-#        style_imgs, 
-#        frame=None, 
-#        args=None
-#    ):
-#    print(f"|---> get_init_image of type: {init_type} with frame: {frame}")
-
-#    if init_type == 'content':
-#        return content_img
-#    elif init_type == 'style':
-#        return style_imgs[0]
-#    elif init_type == 'random':
-#        init_img = get_noise_image(args.noise_ratio, content_img)
-#        return init_img
-#    # only for video frames
-#    elif init_type == 'prev':
-#        init_img = get_prev_frame(frame, args)
-#        return init_img
-#    elif init_type == 'prev_warped':
-#        init_img = get_prev_warped_frame(frame, args)
-#        return init_img
 
 
 def get_input_image(
@@ -573,7 +532,7 @@ def get_input_image(
         frame=None, 
         video_input_dir='./', 
         video_output_dir='./', 
-        content_frame_frmt = 'frame_{}.ppm',
+        frame_content_frmt = 'frame_{}.ppm',
         zill=4,
         noise_ratio = 1.0, 
         args=None
@@ -596,7 +555,7 @@ def get_input_image(
         #init_img = get_prev_frame(
         #    frame, 
         #    video_output_dir,
-        #    content_frame_frmt,
+        #    frame_content_frmt,
         #    zill,
         #)
         init_img = get_prev_frame(
@@ -657,11 +616,11 @@ def get_mask_image(mask_img, width, height,
 #   get_prev_frame: previously stylized frame
 def get_prev_frame(frame, args=None):
     video_output_dir = args.video_input_dir # _e_ tbc
-    content_frame_frmt = args.content_frame_frmt
+    frame_content_frmt = args.frame_content_frmt
     zfill = args.zfill
     
     prev_frame = frame - 1
-    fn = content_frame_frmt.format(str(prev_frame).zfill(zfill))
+    fn = frame_content_frmt.format(str(prev_frame).zfill(zfill))
     path = os.path.join(video_output_dir, fn)
     print(f"|---> get_prev_frame for frame: {frame} from {path}")
 
@@ -677,10 +636,10 @@ def get_prev_warped_frame(frame, args=None):
 
     video_input_dir = args.video_input_dir
     backward_optical_flow_frmt = args.backward_optical_flow_frmt
-    content_frame_frmt = args.content_frame_frmt
+    frame_content_frmt = args.frame_content_frmt
 
     prev_img = get_prev_frame(frame, args)
-    print(f"|---> get_prev_frame in {video_input_dir} with {content_frame_frmt}")
+    print(f"|---> get_prev_frame in {video_input_dir} with {frame_content_frmt}")
     prev_frame = frame - 1
     # backwards flow: current frame -> previous frame
     fn = backward_optical_flow_frmt.format(str(frame), str(prev_frame))
@@ -745,20 +704,6 @@ def convert_to_original_colors(content_img, stylized_img, args=None):
 #   ******************
 #   FUNCS LOG
 #
-
-def write_video_output(
-        frame, 
-        output_img, 
-        video_output_dir= './',
-        content_frame_frmt='frame{}.jpg',
-        zfill = 4,
-    ):
-    print(f"|---> write_video_output frame {frame}")
-    fn = content_frame_frmt.format(str(frame).zfill(zfill))
-    path = os.path.join(video_output_dir, fn)
-    save_cv2(path, output_img)
-
-
 def write_image_output(
         output_img, 
         content_img, 
@@ -892,71 +837,82 @@ def minimize_with_adam(sess, net, optimizer, init_img, loss,
   'a neural algorithm for artistic style' loss functions
 '''
 def content_layer_loss(p, x, args=None):
-  _, h, w, d = p.get_shape()
-  M = h * w # h.value * w.value
-  N = d # d.value
-  if args.content_loss_function   == 1:
-    K = 1. / (2. * N**0.5 * M**0.5)
-  elif args.content_loss_function == 2:
-    K = 1. / (N * M)
-  elif args.content_loss_function == 3:  
-    K = 1. / 2.
-  loss = K * tf.reduce_sum(input_tensor=tf.pow((x - p), 2))
-  return loss
+    _, h, w, d = p.get_shape()
+    M = h * w # h.value * w.value
+    N = d # d.value
+    if args.content_loss_function   == 1:
+        K = 1. / (2. * N**0.5 * M**0.5)
+    elif args.content_loss_function == 2:
+        K = 1. / (N * M)
+    elif args.content_loss_function == 3:  
+        K = 1. / 2.
+    loss = K * tf.reduce_sum(input_tensor=tf.pow((x - p), 2))
+    return loss
 
 def style_layer_loss(a, x):
-  _, h, w, d = a.get_shape()
-  M = h * w # h.value * w.value
-  N = d # d.value
-  A = gram_matrix(a, M, N)
-  G = gram_matrix(x, M, N)
-  loss = (1./(4 * N**2 * M**2)) * tf.reduce_sum(input_tensor=tf.pow((G - A), 2))
-  return loss
+    if 0:
+        print(f'|---> mask_style_layer')      
+    _, h, w, d = a.get_shape()
+    M = h * w # h.value * w.value
+    N = d # d.value
+    A = gram_matrix(a, M, N)
+    G = gram_matrix(x, M, N)
+    loss = (1./(4 * N**2 * M**2)) * tf.reduce_sum(input_tensor=tf.pow((G - A), 2))
+    return loss
 
 def gram_matrix(x, area, depath):
-  F = tf.reshape(x, (area, depath))
-  G = tf.matmul(tf.transpose(a=F), F)
-  return G
+    F = tf.reshape(x, (area, depath))
+    G = tf.matmul(tf.transpose(a=F), F)
+    return G
 
 def mask_style_layer(a, x, mask_img):
-  _, h, w, d = a.get_shape()
-  # mask = get_mask_image(mask_img, w.value, h.value)
-  mask = get_mask_image(mask_img, w, h)
-  mask = tf.convert_to_tensor(value=mask)
-  tensors = []
-  # for _ in range(d.value): 
-  for _ in range(d): 
-    tensors.append(mask)
-  mask = tf.stack(tensors, axis=2)
-  mask = tf.stack(mask, axis=0)
-  mask = tf.expand_dims(mask, 0)
-  a = tf.multiply(a, mask)
-  x = tf.multiply(x, mask)
-  return a, x
+    if 0:
+        print(f'|---> mask_style_layer')    
+    _, h, w, d = a.get_shape()
+    # mask = get_mask_image(mask_img, w.value, h.value)
+    mask = get_mask_image(mask_img, w, h)
+    mask = tf.convert_to_tensor(value=mask)
+    tensors = []
+    # for _ in range(d.value): 
+    for _ in range(d): 
+        tensors.append(mask)
+    mask = tf.stack(tensors, axis=2)
+    mask = tf.stack(mask, axis=0)
+    mask = tf.expand_dims(mask, 0)
+    a = tf.multiply(a, mask)
+    x = tf.multiply(x, mask)
+    return a, x
 
-def sum_masked_style_losses(net, style_imgs, args=None):
-  total_style_loss = 0.
-  weights = args.style_imgs_weights
-  masks = args.style_mask_imgs
-  for img, img_weight, img_mask in zip(style_imgs, weights, masks):
-    net['input'].assign(img)
-    style_loss = 0.
-    for layer, weight in zip(args.style_layers, args.style_layers_weights):
-      a = net[layer]
-      print("sum_masked_style_losses a", a)
-      x = net[layer]
-      a = tf.convert_to_tensor(value=a)
-      a, x = mask_style_layer(a, x, img_mask)
-      style_loss += style_layer_loss(a, x) * weight
-    style_loss /= float(len(args.style_layers))
-    total_style_loss += (style_loss * img_weight)
-  total_style_loss /= float(len(style_imgs))
-  return total_style_loss
-
-def sum_style_losses(net, combo, style_imgs, args=None):
+def sum_masked_style_losses(net, combo, style_imgs, args=None):
+    if 0:
+        print(f'|---> sum_masked_style_losses')
     total_style_loss = 0.
     weights = args.style_imgs_weights
 
+    masks = args.style_mask_imgs
+
+    for img, img_weight, img_mask in zip(style_imgs, weights, masks):
+        #net['input'].assign(img)
+        ps = net.extract_features([combo], args.style_layers)[0]   # net[layer]
+        xs = net.extract_features([img], args.style_layers)[0]   # net[layer]          
+        style_loss = 0.
+        for layer, weight in zip(args.style_layers, args.style_layers_weights):
+            a = net[layer]
+            print("sum_masked_style_losses a", a)
+            x = net[layer]
+            a = tf.convert_to_tensor(value=a)
+            a, x = mask_style_layer(a, x, img_mask)
+            style_loss += style_layer_loss(a, x) * weight
+        style_loss /= float(len(args.style_layers))
+        total_style_loss += (style_loss * img_weight)
+    total_style_loss /= float(len(style_imgs))
+    return total_style_loss
+
+def sum_style_losses(net, combo, style_imgs, args=None):
+    if 0:
+        print(f'|---> sum_style_losses')    
+    total_style_loss = 0.
+    weights = args.style_imgs_weights
 
     for img, img_weight in zip(style_imgs, weights):
             # net['input'].assign(img)
@@ -974,6 +930,8 @@ def sum_style_losses(net, combo, style_imgs, args=None):
     return total_style_loss
 
 def sum_content_losses(net, combo, content_img, args=None):
+    if 0:
+        print(f'|---> sum_content_losses')     
     # net['input'].assign(content_img)
     content_loss = 0.
     ps = net.extract_features([combo], args.content_layers)[0]   # net[layer]
@@ -1012,11 +970,11 @@ def sum_longterm_temporal_losses(sess, net, frame, input_img, args=None):
   for j in range(args.prev_frame_indices):
     prev_frame = frame - j
 
-    print("sum_longterm_temporal_losses", args.init_frame_type)
+    print("sum_longterm_temporal_losses", args.frame_init_type)
     w = input_img # _e_
-    if args.init_frame_type == 'prev':
+    if args.frame_init_type == 'prev':
         w = get_prev_frame(frame, args) # _e_
-    elif args.init_frame_type == 'prev_warped':
+    elif args.frame_init_type == 'prev_warped':
         w = get_prev_warped_frame(frame, args)
 
     # w = get_prev_warped_frame(frame, args)
@@ -1028,11 +986,11 @@ def sum_shortterm_temporal_losses(sess, net, frame, input_img, args=None):
   x = sess.run(net['input'].assign(input_img))
   prev_frame = frame - 1
 
-  print("sum_longterm_temporal_losses init_frame_type", args.init_frame_type)
+  print("sum_longterm_temporal_losses frame_init_type", args.frame_init_type)
   w = input_img # _e_
-  if args.init_frame_type == 'prev':
+  if args.frame_init_type == 'prev':
       w = get_prev_frame(frame, args) # _e_
-  elif args.init_frame_type == 'prev_warped':
+  elif args.frame_init_type == 'prev_warped':
       w = get_prev_warped_frame(frame, args)
 
   #   w = get_prev_warped_frame(frame, args)
@@ -1107,7 +1065,6 @@ def show_effect_a(path):
     img = onvgg.vgg_deprocess(img)
     image = Image.fromarray(img)
     image.show() 
-
 
 
 def read_flow_file(path):
@@ -1216,10 +1173,10 @@ def build_vgg(
     vgg = tf.keras.Model(inputs, outputs)
 
     if model_weights:
-        print("load model_weights")
+        print("|...> load model_weights")
         vgg.load_weights(model_weights)
     else:
-        print("did not load model_weights")
+        print("|...> did not load model_weights")
 
     return vgg
 
@@ -1255,9 +1212,9 @@ class GAN(tf.keras.models.Model):
         )
 
         layer_names = content_layers + style_layers
-        print("GAN content_layers", content_layers)
-        print("GAN style_layers", style_layers)
-        print("GAN layers", layer_names)
+        print("|...> GAN content_layers", content_layers)
+        print("|...> GAN style_layers", style_layers)
+        print("|...> GAN layers", layer_names)
         outputs = {name: vggmodel.get_layer(name).output for name in layer_names}        
         # outputs = [vggmodel.get_layer(name).output for name in layer_names]
         self.net = tf.keras.Model([vggmodel.input], outputs) 
@@ -1355,18 +1312,19 @@ class GAN(tf.keras.models.Model):
 
     def fit(self, input_img, content_img, style_imgs, 
             frame = None,
-            args  = None): # 
+            args  = None
+        ):
 
         max_epochs = args.max_epochs
         steps_per_epoch = args.steps_per_epoch
         video = args.video
         visual = args.visual
         verbose = args.verbose
-        video_output_dir = args.video_output_dir
         img_output_dir = args.img_output_dir
+        video_styled_dir = args.video_styled_dir
         image_step_format = args.image_step_format
         image_epoch_format = args.image_epoch_format
-        content_frame_frmt = args.content_frame_frmt
+        frame_content_frmt = args.frame_content_frmt
         zfill = args.zfill
         show_fit_imgs = args.show_fit_imgs
 
@@ -1383,21 +1341,26 @@ class GAN(tf.keras.models.Model):
             content_img shape: {np.shape(content_img)} \n \
             style_imgs shape: {[np.shape(img) for img in style_imgs]} \n \
             combo_img shape: {type(self.image)} {np.shape(self.image)} \n \
+            style_mask: {args.style_mask} \n \
         ')
 
 
-        if 1 and visual:
+        if visual > 1:
             print(f'|---> pil input_img')
-            if 0: onplot.pil_show_nua(input_img)        
+            if 1: onplot.pil_show_nua(input_img)        
 
             print(f'|---> pil content_img')
-            if 0: onplot.pil_show_nua(content_img)        
+            if 1: onplot.pil_show_nua(content_img)        
 
             print(f'|---> pil style_imgs')
-            if 0: onplot.pil_show_nuas(style_imgs)   
+            if 1: onplot.pil_show_nuas(style_imgs)   
 
             print(f'|---> pil combo_img')
-            onplot.pil_show_nua(self.image)
+            if 1: onplot.pil_show_nua(self.image)
+
+            if args.style_mask_imgs:
+                print(f'|---> pil combo_img')
+                onplot.pil_show_nua(self.image)
 
 
         # # ============
@@ -1412,7 +1375,10 @@ class GAN(tf.keras.models.Model):
         for epoch in range(max_epochs):
             step = 0
             for step_in_epoch in range(steps_per_epoch):
-                print(f'|---> epoch.step: {epoch}.{step}')
+                if video:
+                    print(f'|---> fit {frame}:{epoch}:{step}')
+                else:
+                    print(f'|---> fit {epoch}:{step}')
                 step += 1
 
                 # ==========================================
@@ -1454,13 +1420,13 @@ class GAN(tf.keras.models.Model):
                 )
 
             if 1 and visual:
-                print(f'|---> pil combo_img epoch " {epoch}')
+                if 0: print(f'|---> pil combo_img epoch " {epoch}')
                 onplot.pil_show_nua(self.image)
 
         if video:
-            frame_name = args.content_frame_frmt.format(str(frame).zfill(zfill))
-            outpath_path = os.path.join(args.video_output_dir, frame_name)
-            print(f"|... fit save frame to {outpath_path} on epoch {epoch}")
+            frame_name = args.frame_content_frmt.format(str(frame).zfill(zfill))
+            outpath_path = os.path.join(video_styled_dir, frame_name) # styled
+            print(f"|...> fit save frame to {outpath_path} on epoch {epoch}")
             output_img = onformat.nua_to_pil(image)
             onfile.pil_to_file_with_cv(outpath_path, output_img)
 
@@ -1471,8 +1437,12 @@ class GAN(tf.keras.models.Model):
 #   CMDS
 #
 #   ****************
-   
+'''
+   stylize
+    sum_style_losses
+    sum_masked_style_losses args.style_mask
 
+'''
 #   *******************
 #   nnimg
 #
@@ -1482,6 +1452,7 @@ def nnimg(args, kwargs):
         args.PROJECT = 'bomze' # https://github.com/tg-bomze/Style-Transfer-Collection
         args.DATASET = 'bomze'
         args.content_img_file = 'bomze-content.png'
+        args.content_size = (512, 512)        
         args.init_img_name = 'bomze-content.png'
         args.style_imgs_files = ['bomze-style.png']
 
@@ -1489,6 +1460,7 @@ def nnimg(args, kwargs):
         args.PROJECT = 'building'
         args.DATASET = 'building'
         args.content_img_file = 'IMG_4468.JPG'
+        args.content_size = (512, 512)        
         args.init_img_name = 'IMG_4468.JPG'
         args.style_imgs_files = ['EZNJVoTXsAgUh6M.jpg', 'EZsQWC1X0AQaxHs.jpg']
 
@@ -1496,13 +1468,15 @@ def nnimg(args, kwargs):
         args.PROJECT = 'labrador'
         args.DATASET = 'labrador'        
         args.content_img_file = 'YellowLabradorLooking_new.jpg'
+        args.content_size = (512, 512)        
         args.init_img_name = 'YellowLabradorLooking_new.jpg'
         args.style_imgs_files = ['starry-night.jpg']
 
-    if 1:
+    if 0:
         args.PROJECT = 'kandinsky'
         args.DATASET = 'Kandinsky'        
         args.content_img_file = 'YellowLabradorLooking_new.jpg'
+        args.content_size = (512, 512)        
         args.init_img_name = 'YellowLabradorLooking_new.jpg'
         args.style_imgs_files = ['Vassily_Kandinsky,_1913_-_Composition_7.jpg']
 
@@ -1510,84 +1484,114 @@ def nnimg(args, kwargs):
         args.PROJECT = 'lion'
         args.DATASET = 'lion'        
         args.content_img_file = 'lion.jpg'
+        args.content_size = (512, 512)        
         args.init_img_name = 'lion.jpg'
         args.style_imgs_files = ['a-hymn-to-the-shulamite-1982.jpg']
 
+
+    if 1:
+        args.PROJECT = 'madrid'
+        args.DATASET = 'madrid'          
+        args.content_img_file = 'madrid.JPG'
+        args.content_size = (512, 512)
+        args.init_img_name = 'madrid.JPG'
+        args.style_imgs_files = ['starry-night.jpg']
+        #args.style_mask_imgs = ['madridsil.JPG']
+        #args.content_mask_img = 'madridsil.JPG'
+
+    if 0:
+        args.PROJECT = 'portubridge'
+        args.DATASET = 'portubridge'        
+        args.content_img_file = 'portu_frame0000.jpg'
+        args.content_size = (512, 512)        
+        args.init_img_name = 'portu_frame0000.jpg'
+        args.style_imgs_files = ['kandinsky.jpg']
 
     args = onutil.pargs(vars(args))
     xp = getxp(vars(args))
     args = onutil.pargs(xp)    
     onutil.ddict(vars(args), 'args')
 
+
     if 1: # config
-
-        args.max_epochs = 100
-        args.steps_per_epoch = 1
-        args.total_variation_weight = 0.001
-        args.content_imgs_weights = [1.0]
-        args.content_layers_weights = [2.5e-08]
-        args.style_imgs_weights = [1.0]
-        args.style_layers_weights = [0.01, 0.01, 0.01, 0.01, 0.01]
-
-        #--
-        args.content_loss_function = 1
-        args.content_weight = 5e0
-        args.style_layers_weights = [0.2, 0.2, 0.2, 0.2, 0.2]
-        args.style_mask_imgs = []
-        args.style_weight = 1e4
-        args.total_variation_weight = 1e-3
-        args.style_mask = None
-
+        if 'style_mask_imgs' in vars(args).keys():
+            if args.style_mask_imgs:
+                args.style_mask = 1
+                print(f'|...> {args.style_mask_imgs}')
+            else:
+                args.style_mask = 0
+        else:
+            args.style_mask = 0
 
         print(f"|===> nnimg: config \n \
-        args.video: {args.video} : content images from frames \n \
-        args.show_entry_imgs: {args.show_entry_imgs} \n \
-        args.steps_per_epoch: {args.steps_per_epoch} \n \
-        args.model_weights: {args.model_weights} \n \
-        args.max_epochs: {args.max_epochs} \n \
+            args.video: {args.video} : content images from frames \n \
+            args.show_entry_imgs: {args.show_entry_imgs} \n \
+            args.steps_per_epoch: {args.steps_per_epoch} \n \
+            args.model_weights: {args.model_weights} \n \
+            args.max_epochs: {args.max_epochs} \n \
+            args.style_mask: {args.style_mask} \n \
         ")
-    #--
+
     if 1: # tree
 
-        args.style_layers_weights  = normalize(args.style_layers_weights)
-        args.content_layer_weights = normalize(args.content_layer_weights)
-        args.style_imgs_weights    = normalize(args.style_imgs_weights)
+        args.code_dir = os.path.join(args.proto_dir, 'code') # up project dir
+        args.data_dir = os.path.join(args.proto_dir, 'data')
 
-        content_base = os.path.splitext(args.content_img_file)[0]
+        args.video_input_path = os.path.join(args.dataorg_dir, args.video_file)
+        args.video_frames_dir=os.path.join(args.proj_dir, 'frames')
+        args.video_styled_dir=os.path.join(args.proj_dir, 'outstyled')
+        args.video_output_dir=os.path.join(args.proj_dir, 'outvid')
+        args.video_input_dir = args.video_output_dir # frames _e_
+
+        args.style_imgs_weights = normalize(args.style_imgs_weights)
+        args.style_imgs_dir = args.data_dir
         style_base = os.path.splitext(args.style_imgs_files[0])[0]
-        args.output_folder = content_base + "_" + style_base
-        args.img_output_dir = os.path.join(args.results_dir, 'cromes', args.output_folder)
+        args.style_layers_weights = normalize(args.style_layers_weights)
+
+        args.content_layer_weights = normalize(args.content_layer_weights)
+        args.content_imgs_dir = args.data_dir
+        content_base = os.path.splitext(args.content_img_file)[0]
 
         args.output_folder = content_base + "_" + style_base
         args.img_output_dir = os.path.join(args.results_dir, 'cromes', args.output_folder)
+
+        args.init_img_dir = args.data_dir
 
         print(f"|===> nnimg: tree \n \
-        args.output_folder: {args.output_folder} \n \
-        args.img_output_dir: {args.img_output_dir} \n \
+            args.output_folder: {args.output_folder} \n \
+            args.img_output_dir: {args.img_output_dir} \n \
+            \n \
+            args.proto_dir: {args.proto_dir} \n \
+            args.data_dir: {args.data_dir} \n \
+            args.content_imgs_dir: {args.content_imgs_dir} \n \
+            args.init_img_dir: {args.init_img_dir} \n \
+            args.style_imgs_dir: {args.style_imgs_dir} \n \
         ")
 
         os.makedirs(args.data_dir, exist_ok=True)
         os.makedirs(args.content_imgs_dir, exist_ok=True) # data_dir
 
+
     if 1: # content image: (422, 512, 3) <class 'numpy.ndarray'>  [[[ 99 165 160]
 
-        args.content_size = (512, 512)
         content_img_path = os.path.join(args.content_imgs_dir, args.content_img_file)
         assert os.path.exists(content_img_path), f"content image {content_img_path} does not exist"
-        content_img = onfile.path_cv_pil(content_img_path)
-        content_img = ondata.pil_resize(content_img, ps=args.content_size)
-        content_img = onformat.pil_to_dnua(content_img)
+
+        img = onfile.path_cv_pil(content_img_path)
+        img = ondata.pil_resize(img, ps=args.content_size)
+        img = onformat.pil_to_dnua(img)
         print(f"|===> nnimg: content \n \
             content_img_path: {content_img_path} \n \
             args.content_imgs_dir: {args.content_imgs_dir} \n \
-            content_shape: {np.shape(content_img)} \n \
+            img shape: {np.shape(img)} \n \
         ")
-    
-    if 0 and args.visual: 
+        content_img = img
+
+    if args.visual > 1:
         print(f'|---> pil content img')
         onplot.pil_show_nua(content_img) # non interrupt
 
-    if 0 and args.visual: # show content image
+    if args.visual > 1:# show content image
         print(f'|---> cv content img')
         content_img_path = os.path.join(args.content_imgs_dir, args.content_img_file)
         onplot.cv_path(content_img_path, size = 512, title='content img', wait=2000)
@@ -1601,7 +1605,7 @@ def nnimg(args, kwargs):
             init_shape: {np.shape(init_image)} \n \
         ")
 
-        if 0 and args.visual:
+        if args.visual > 1:
             print(f'|---> vis init')
             onplot.pil_show_nua(init_image, "[   .   ] init_image")
 
@@ -1612,9 +1616,56 @@ def nnimg(args, kwargs):
             args.style_imgs_dir: {args.style_imgs_dir} \n \
             shapes: {[str(np.shape(style_imgs[i])) for i,img in enumerate(style_imgs)]} \n \
         ")
-        if 0 and args.visual:
+        if args.visual > 1:
             print(f'|---> vis styles')
             onplot.pil_show_nuas(style_imgs, ["[   .   ] style_imgs"])
+
+    if 1: #   mask style images
+
+        if args.style_mask:
+            style_mask_imgs = onfile.names_to_nuas_with_tf(args.mask_imgs_files, args.style_imgs_dir, args,)
+            print(f"|===> nnimg: masks \n \
+                args.mask_imgs_files: {args.mask_imgs_files} \n \
+                args.style_imgs_dir: {args.style_imgs_dir} \n \
+                shapes: {[str(np.shape(style_mask_imgs[i])) for i,img in enumerate(style_mask_imgs)]} \n \
+            ")
+            if args.visual > 1:
+                print(f'|---> vis masks')
+                onplot.pil_show_nuas(style_mask_imgs, ["[   .   ] style_mask_imgs"])
+            args.style_mask_imgs = style_mask_imgs
+
+
+    if 1: #   mask content images
+
+        print("|---> mask content images")
+        
+        name_base = os.path.splitext(args.content_img_file)[0]
+        name_ext = os.path.splitext(args.content_img_file)[1]
+        print("|...> name_base", name_base, name_ext)
+
+        name_mask = f'{name_base}_mask{name_ext}'
+        print("|...> name_mask", name_mask)
+
+        (b,h,w,c) = np.shape(content_img)
+        dim = (w, h)
+        print("|...> content_size", dim)
+
+        outpath = os.path.join(args.data_dir, name_mask)
+
+        img = onformat.nua_to_pil(content_img)
+        cvi = onformat.pil_to_cvi(img)
+
+        img_mask = onimg.img_to_mask(cvi,outpath=outpath,height=h,width=w,ml=38)
+
+        cvimasked = onimg.cvi_mask_to_cvi(cvi, img_mask, op=4)
+
+        if args.visual > 1:
+            cv2.imshow('content img', cvi)                 
+            cv2.imshow('content mask', img_mask)            
+            cv2.imshow('masked img', cvimasked)            
+            cv2.waitKey(0) & 0xFF is 27
+            cv2.destroyAllWindows()
+
 
     if 1: # input image
         print(f'|===> input shape  \n \
@@ -1630,34 +1681,35 @@ def nnimg(args, kwargs):
             args.frame, 
             args.video_input_dir, 
             args.video_output_dir, 
-            args.content_frame_frmt,
+            args.frame_content_frmt,
         )
 
         input_img = onformat.tnua_resize(input_img, args.max_size, args.max_size)
-
-        if 1 and args.visual:
+        if 0 and args.visual:
             onplot.pil_show_nua(input_img, "[   .   ] input_img")
-        if 1:   # imgs props
-            print(f"|===> nnimg: input \n \
-                input shape: {np.shape(input_img)} \n \
-        ")
-
 
 
     if 1: # model
+
         b,w,h,c = np.shape(input_img)
         input_shape = (w,h,c)
 
-        print(f"|===> model \n \
+        print(f'|===> model \n \
             input_shape: {input_shape} \n \
-        ")
-
+        ')
         model = GAN( input_shape = input_shape, args = args, )
+
 
     if 1: # fit
 
-        print(f"|===> fit   \n ")
-        model.fit(input_img, content_img, style_imgs, 
+        print(f'|===> fit input image \n \
+            cwd: {os.getcwd()} \n \
+            input_img shape: {np.shape(input_img)} \n \
+            args.style_mask: {args.style_mask} \n \
+        ')
+
+        model.fit(
+            input_img, content_img, style_imgs, 
             frame= None,
             args = args
         )
@@ -1668,106 +1720,143 @@ def nnimg(args, kwargs):
 #
 def nnani(args, kwargs):
 
+    if 0:
+        args = onutil.pargs(vars(args))
+        args.PROJECT = 'newyork'
+        args.DATASET = 'stransfer'
+        args.content_size = (512, 512)   
+        args.style_imgs_files = ['starry-night.jpg']        
+        args.video_file = 'Streets of New York City 4K video-vCdBIRtsL6o.f313.mp4'
+
+    if 1:
+        args = onutil.pargs(vars(args))
+        args.PROJECT = 'portu'
+        args.DATASET = 'stransfer'
+        args.content_size = (512, 512)   
+        args.style_imgs_files = ['kandinsky.jpg']        
+        args.video_file = 'portu.mp4'    
+
     args = onutil.pargs(vars(args))
-    args.PROJECT = 'portu'
-    args.DATASET = 'stransfer'
     xp = getxp(vars(args))
-    args = onutil.pargs(xp)
+    args = onutil.pargs(xp)    
     onutil.ddict(vars(args), 'args')
 
     if 1: # config
-        args.start_frame = 0
-        args.end_frame = -1 # num_frames
-        args.max_iterations = 10 # 1000
-        args.first_frame_iterations = 20 # 2000
+        args.frame_start = 0
+        args.frame_end = -1 # num_frames
         args.video = True 
-        args.content_frame_frmt = 'frame{}.jpg'
-        args.style_imgs_files = ['starry-night.jpg']
 
     print(f"|===> nnani config \n \
-        args.first_frame_iterations: {args.first_frame_iterations} \n \
-        args.start_frame: {args.start_frame} \n \
+        args.video: {args.video} \n \
+        args.visual: {args.visual} \n \
+        args.frame_first_iterations: {args.frame_first_iterations} \n \
+        args.frame_start: {args.frame_start} \n \
         args.max_iterations: {args.max_iterations} \n \
         args.style_imgs_files = {args.style_imgs_files} \n \
     ")
-
 
     if 1: # tree
 
         extension=os.path.splitext(os.path.basename(args.video_file))[1]
 
+        args.code_dir = os.path.join(args.proto_dir, 'code') # up project dir
+
+        args.video_input_path = os.path.join(args.dataorg_dir, args.video_file)
+        args.video_frames_dir=os.path.join(args.proj_dir, 'frames')
+        args.video_styled_dir=os.path.join(args.proj_dir, 'outstyled')
+        args.video_output_dir=os.path.join(args.proj_dir, 'outvid')
+        args.video_input_dir = args.video_output_dir # frames _e_
+
         content_filename=os.path.splitext(os.path.basename(args.video_file))[0]
         content_filename=f"{content_filename}" # eg portu
 
-        # input from org
-        video_input_path = os.path.join(args.dataorg_dir, args.video_file)
 
-        # frames, styled, output, results .. in code
-        args.video_frames_dir=os.path.join(args.proj_dir, 'frames')
-        args.video_styled_dir=os.path.join(args.proj_dir, 'styled')
-        args.video_output_dir=os.path.join(args.proj_dir, 'output')
-        img_output_dir=os.path.join(args.proj_dir, 'results')
+        args.img_output_dir=os.path.join(args.proj_dir, 'outimgs')
 
+        args.data_dir = os.path.join(args.proto_dir, 'data')
+        args.content_imgs_dir = args.data_dir
+        args.init_img_dir = args.data_dir
+        args.style_imgs_dir = args.data_dir
+
+        print(f'|===> nnani tree \n \
+            cwd: {os.getcwd()} \n \
+            args.video_file: {args.video_file} \n \
+            content_filename: {content_filename} \n \
+            args.video_input_path: {args.video_input_path} \n \
+            args.proto_dir: {args.proto_dir} \n \
+            args.code_dir: {args.code_dir} \n \
+            args.video_frames_dir: {args.video_frames_dir} \n \
+            args.video_styled_dir: {args.video_styled_dir} \n \
+            args.video_output_dir: {args.video_output_dir} \n \
+            args.video_input_dir: {args.video_input_dir} \n \
+        ')
+
+        os.makedirs(args.results_dir, exist_ok=True)
         os.makedirs(args.video_frames_dir, exist_ok=True)
         os.makedirs(args.video_styled_dir, exist_ok=True)
         os.makedirs(args.video_output_dir, exist_ok=True)
-        os.makedirs(img_output_dir, exist_ok=True)
+        os.makedirs(args.img_output_dir, exist_ok=True)
 
-        assert os.path.exists(video_input_path), f'input vide {video_input_path} does not exist'
+        assert os.path.exists(args.video_input_path), f'input vide {args.video_input_path} does not exist'
 
-    print(f'|===> nnani tree \n \
-        cwd: {os.getcwd()} \n \
-        args.video_file: {args.video_file} \n \
-        content_filename: {content_filename} \n \
-        video_input_path: {video_input_path} \n \
-        args.video_frames_dir: {args.video_frames_dir} \n \
-        args.video_styled_dir: {args.video_styled_dir} \n \
-        args.video_output_dir: {args.video_output_dir} \n \
-    ')
+
+    if 1: # git
+        onutil.get_git(args.AUTHOR, args.GITPOD, args.code_dir)
+
+    assert os.path.exists(args.code_dir), "code_dir not found"        
+    os.chdir(args.code_dir) # _e_ not std
 
     if 1: # vid => frames
-        print(f'|===> nnani vid to frames \n \
-            video_input_path: {video_input_path} \n \
-            args.video_frames_dir: {args.video_frames_dir} \n \
-        ')
-        onvid.vid_to_frames(video_input_path, args.video_frames_dir, target = 1)
+        if 1:
+            print(f'|===> nnani vid to frames \n \
+                args.video_input_path: {args.video_input_path} \n \
+                args.video_frames_dir: {args.video_frames_dir} \n \
+            ')
+            onvid.vid_to_frames(args.video_input_path, args.video_frames_dir, target = 1)
+        else:
+            frame_pattern = 'frame%04d.ppm'
+            cmd = f'ffmpeg -v quiet -i "{args.video_input_path}" "{args.video_frames_dir}/{frame_pattern}"'
+            print(f"cmd: {cmd}")
+            os.system(cmd)            
+
+
+    if 0: # frames size
+        ppm = os.path.join(args.video_frames_dir, 'frame0000.jpg')
+        im = Image.open(ppm)
+        width, height = im.size   
+        max_size = max(width, height)
+
+        print(f"|===> nnani frame size \n \
+            max_size: {max_size} \n \
+        ")
 
 
     if 1: # video
 
         num_frames = len([name for name in os.listdir(args.video_frames_dir) if os.path.isfile(os.path.join(args.video_frames_dir, name))])
-        args.start_frame = 1
-        args.end_frame = num_frames
-        args.first_frame_type = 'content'
-        args.max_iterations = 10 # 1000
-        args.first_frame_iterations = 20 # 2000
-        args.init_frame_type = 'prev' # 'prev_warped'
-        args.content_frame_frmt = 'frame{}.jpg'
-        args.video_input_dir = args.video_output_dir # frames _e_
+        args.frame_end = num_frames
 
         found_q_frames = len([name for name in os.listdir(args.video_styled_dir) if os.path.isfile(os.path.join(args.video_styled_dir, name))])
-        start_frame = found_q_frames + 1
+        frame_start = found_q_frames + 1
     
-        frame = args.start_frame
-        args.frame_name = args.content_frame_frmt.format(str(frame).zfill(args.zfill))
+        frame = args.frame_start
+        args.frame_name = args.frame_content_frmt.format(str(frame).zfill(args.zfill))
         args.frame_img_path = os.path.join(args.video_frames_dir, args.frame_name) 
 
     print(f"|===> nnani video \n \
         cwd: {os.getcwd()} \n \
         num_frames: {num_frames} \n \
-        video_input_path: {video_input_path} \n \
-        img_output_dir: {args.img_output_dir} \n \
+        args.video_input_path: {args.video_input_path} \n \
+        args.img_output_dir: {args.img_output_dir} \n \
         content_filename: {content_filename} \n \
         extension: {extension} \n \
-        style_imgs_dir: {args.style_imgs_dir} \n \
-        style_imgs: {args.style_imgs_files} \n \
-        video_file: {args.video_file} \n \
-        video_output_dir: {args.video_output_dir} \n \
-        video: {args.video} \n \
-        args.video_frames_dir: {args.video_frames_dir} \n \
-        end_frame: {args.end_frame} \n \
-        input_shape: {args.input_shape} \n \
-        content_frame_frmt: {args.content_frame_frmt} \n \
+        args.style_imgs_dir: {args.style_imgs_dir} \n \
+        args.style_imgs: {args.style_imgs_files} \n \
+        args.video_file: {args.video_file} \n \
+        args.video: {args.video} \n \
+        args.frame_end: {args.frame_end} \n \
+        args.input_shape: {args.input_shape} \n \
+        args.frame_content_frmt: {args.frame_content_frmt} \n \
         frame: {frame} \n \
         args.frame_name: {args.frame_name} \n \
         args.frame_img_path: {args.frame_img_path} \n \
@@ -1778,106 +1867,116 @@ def nnani(args, kwargs):
             cwd: {os.getcwd()} \n \
             content_frame: {args.frame_img_path} \n \
         ')                
-        content_frame = onfile.path_cv_pil(args.frame_img_path)
-        content_frame = onformat.pil_to_dnua(content_frame)
-        if 1 : 
+        img = onfile.path_cv_pil(args.frame_img_path)
+        img = ondata.pil_resize(img, ps=args.content_size)
+        img = onformat.pil_to_dnua(img)
+        print(f"|===> nnani: content \n \
+            args.frame_img_path: {args.frame_img_path} \n \
+            args.content_imgs_dir: {args.content_imgs_dir} \n \
+            img shape: {np.shape(img)} \n \
+        ")
+        content_frame = img
+        if args.visual > 1:
             onplot.pil_show_nua(content_frame)
 
-    if 1: # style
-        print(f'|===> get style  \n \
-            cwd: {os.getcwd()} \n \
-            args.style_imgs_files = {args.style_imgs_files} \n \
-        ')                
-        style_imgs = get_style_cvis(content_frame, args)
-        style_imgs = onformat.cvis_to_pils(style_imgs)
-        style_imgs = onformat.pils_to_dnuas(style_imgs)
-        if args.visual:
+
+    if 1: #   style images
+        style_imgs = onfile.names_to_nuas_with_tf(args.style_imgs_files, args.style_imgs_dir, args,)
+        print(f"|===> nnani: styles \n \
+            args.style_imgs_files: {args.style_imgs_files} \n \
+            args.style_imgs_dir: {args.style_imgs_dir} \n \
+            shapes: {[str(np.shape(style_imgs[i])) for i,img in enumerate(style_imgs)]} \n \
+        ")
+        if 0 and args.visual:
             print(f'|---> vis styles')
             onplot.pil_show_nuas(style_imgs, ["[   .   ] style_imgs"])
+
 
     if 1: # input shape
         print(f'|===> input shape  \n \
             cwd: {os.getcwd()} \n \
             args.video: {args.video} \n \
-            args.first_frame_type: {args.first_frame_type} \n \
+            args.frame_first_type: {args.frame_first_type} \n \
             frame: {frame} \n \
         ')                    
         input_img = get_input_image(
-            args.first_frame_type, 
+            args.frame_first_type, 
             content_frame, 
             style_imgs, 
-            frame, 
-            args
+            init_img=None, 
+            frame=frame,  
+            args=args
         )
-        b,w,h,c = np.shape(input_img)
-        input_shape = (w,h,c)    
+ 
 
     print(f'|===> nnani  \n \
         cwd: {os.getcwd()} \n \
         content_filename: {content_filename} \n \
-        args.content_frame_frmt: {args.content_frame_frmt} \n \
+        args.frame_content_frmt: {args.frame_content_frmt} \n \
         content_frame shape: {np.shape(content_frame)} \n \
-        args.style_imgs_dir: {args.style_imgs_dir} \n \
         args.style_imgs: ({len(args.style_imgs_files)}) {args.style_imgs_files} \n \
         style_imgs shapes: {[np.shape(img) for img in style_imgs]} \n \
         args.video_file: {args.video_file} \n \
         args.video_output_dir: {args.video_output_dir} \n \
         args.video_frames_dir: {args.video_frames_dir} \n \
-        args.start_frame/end_frame: ({num_frames}) {args.start_frame} : {args.end_frame} \n \
+        args.frame_start/frame_end: ({num_frames}) {args.frame_start} : {args.frame_end} \n \
         args.input_img shape: {np.shape(input_img)} \n \
-        args.img_output_dir: {args.img_output_dir} \n \
     ')
 
-    # _e_ !!!
-    if 1: # model
-        #args.video_output_dir = args.video_styled_dir
-        args.video_output_dir = args.video_output_dir
-        args.img_output_dir = img_output_dir
+
+    if 0: # model
+
+        b,w,h,c = np.shape(input_img)
+        input_shape = (w,h,c)   
 
         print(f"|===> nnani model \n \
             cwd: {os.getcwd()} \n \
             input_shape: {input_shape} \n \
-            video_input_path: {video_input_path} \n \
-            args.video_output_dir: {args.video_output_dir} \n \
+            args.video_input_path: {args.video_input_path} \n \
+            args.img_output_dir: {args.img_output_dir} \n \
+        ")
+        model = GAN(input_shape = input_shape, args = args,)
+
+
+    if 0: # fit
+
+        print(f"|===> nnani fit \n \
+            cwd: {os.getcwd()} \n \
+            args.video_styled_dir: {args.video_styled_dir} \n \
             args.img_output_dir: {args.img_output_dir} \n \
         ")
 
-        model = GAN(
-            #input_shape = input_shape,          
-            args = args,
-        )
-
-
-    if 1: # fit
-
         args.max_iterations = args.frame_iterations
-        for frame in range(args.start_frame, args.end_frame+1):
-            print(f'|===> RENDERING VIDEO FRAME ({args.first_frame_type}): {frame}/{args.end_frame} ----\n')
+        for frame in range(args.frame_start, args.frame_end+1):
+            print(f'|===> RENDERING VIDEO FRAME ({args.frame_first_type}): {frame}/{args.frame_end} ----\n')
 
-            if frame == args.start_frame:
-                print(f"|... start_frame input_img type: {type(input_img)}")
+            if frame == args.frame_start:
+                print(f"|...> frame_start input_img type: {type(input_img)}")
                 input_img = get_input_image(
-                    init_type=args.first_frame_type, 
+                    init_type=args.frame_first_type, 
                     content_img=content_frame, 
                     style_imgs=style_imgs, 
-                    frame=frame, 
+                    init_img=None, 
+                    frame=frame,  
                     args=args
                 )
             else:
-                print(f"|... other_frame input_img type: {type(input_img)}")
-                input_img = get_input_image(
-                    init_type=args.init_frame_type, 
+                print(f"|...> other_frame input_img type: {type(input_img)}")
+                input_img = get_input_image(  # (1, 1080, 1440, 3) <class 'numpy.ndarray'>
+                    init_type=args.frame_init_type, #
                     content_img=content_frame, 
                     style_imgs=style_imgs, 
-                    frame=frame, 
+                    init_img=None, 
+                    frame=frame,  
                     args=args
                 )
 
+            input_img = onimg.tf_resize_nua(input_img, args=args)
 
-            if 1:
-                onplot.pil_show_nua(input_img ,"init image")
-
-            tick = time.time()
+            print(f"|===> fit input image \n \
+                cwd: {os.getcwd()} \n \
+                input_img shape: {np.shape(input_img)} \n \
+            ")
 
             model.fit( 
                 input_img, content_frame, style_imgs,
@@ -1885,9 +1984,47 @@ def nnani(args, kwargs):
                 args = args,
             )
 
-            tock = time.time()
-            print(f'|... frame {frame} elapsed time: {tock - tick}')    
+    if 0: # render stylized video
+        
+        os.chdir(args.code_dir) # _e_ not std
 
+        print(f"|===> nnani render stylized video \n \
+            cwd: {os.getcwd()} \n \
+            video: {args.video} \n \
+        ")
+
+        cmd = f'python neural_style.py --video \
+        --video_input_dir "{args.video_frames_dir}" \
+        --style_imgs_dir "{args.style_imgs_dir}" \
+        --style_imgs {args.style_imgs_files[0]} \
+        --frame_end {args.frame_end} \
+        --max_size {args.max_size} \
+        --verbose'
+        print(cmd)
+        
+    if 1: # gen video
+
+        fps = 6
+        maxTime = 9 # seconds
+        frameCount = 0
+        time = 0
+        nframes = int( maxTime*fps )
+
+        qsegs = 7
+        qcells = qsegs * qsegs
+        fps=10
+
+        video_output_path = os.path.join(args.video_output_dir, 'v.mp4')
+        gif_output_path = os.path.join(args.video_output_dir, 'v.gif')
+
+        print(f'|===> nnani render stylized video \n \
+            from args.video_frames_dir: {args.video_frames_dir} \n \
+            to video_output_path: {video_output_path} \n \
+        ')
+
+        #onvid.frames_to_video(args.video_styled_dir, video_output_path, fps)
+        onvid.folder_to_gif(args.video_styled_dir, gif_output_path)
+        
 
 #   ******************
 #
@@ -1899,20 +2036,20 @@ def nnvid(args, kwargs):
     onutil.ddict(vars(args), 'args')
 
     if 1: # config
-        args.start_frame = 1
-        args.end_frame = -1 # num_frames
+        args.frame_start = 1
+        args.frame_end = -1 # num_frames
         args.max_iterations = 10 # 1000
-        args.first_frame_iterations = 20 # 2000
+        args.frame_first_iterations = 20 # 2000
         args.video = True 
-        args.content_frame_frmt = 'frame{}.ppm'
+        args.frame_content_frmt = 'frame{}.ppm'
 
     print(f"|===> nnvid config \n \
         cwd: {os.getcwd()} \n \
-        args.start_frame: {args.start_frame} \n \
-        args.end_frame: {args.end_frame} \n \
+        args.frame_start: {args.frame_start} \n \
+        args.frame_end: {args.frame_end} \n \
         args.max_iterations: {args.max_iterations} \n \
-        args.first_frame_iterations: {args.first_frame_iterations} \n \
-        args.content_frame_frmt: {args.content_frame_frmt} \n \
+        args.frame_first_iterations: {args.frame_first_iterations} \n \
+        args.frame_content_frmt: {args.frame_content_frmt} \n \
     ")
 
     if 1: # tree: video file, frames folder
@@ -1923,7 +2060,7 @@ def nnvid(args, kwargs):
         extension=os.path.splitext(os.path.basename(args.video_file))[1]
         content_filename=f"{content_filename}" # portu
 
-        video_input_path = os.path.join(args.data_dir, args.video_file)
+        args.video_input_path = os.path.join(args.data_dir, args.video_file)
         args.video_frames_dir=os.path.join(args.video_input_dir, content_filename, 'frames')
         args.video_styled_dir=os.path.join(args.video_input_dir, content_filename, 'styled')
 
@@ -1938,20 +2075,20 @@ def nnvid(args, kwargs):
         args.video_input_dir: {args.video_input_dir} \n \
         args.video_frames_dir: {args.video_frames_dir} \n \
         args.video_styled_dir: {args.video_styled_dir} \n \
-        video_input_path: {video_input_path} \n \
+        args.video_input_path: {args.video_input_path} \n \
     ")
 
 
     if 1: # vid => frames
         if 1:
             print(f"|===> nnani vid to frames \n \
-                video_input_path: {video_input_path} \n \
+                args.video_input_path: {args.video_input_path} \n \
                 args.video_frames_dir: {args.video_frames_dir} \n \
             ")
-            onvid.vid_to_frames(video_input_path, args.video_frames_dir, target = 1)
+            onvid.vid_to_frames(args.video_input_path, args.video_frames_dir, target = 1)
         else:
             frame_pattern = 'frame%04d.ppm'
-            cmd = f'ffmpeg -v quiet -i "{video_input_path}" "{args.video_frames_dir}/{frame_pattern}"'
+            cmd = f'ffmpeg -v quiet -i "{args.video_input_path}" "{args.video_frames_dir}/{frame_pattern}"'
             print(f"cmd: {cmd}")
             os.system(cmd)
 
@@ -2005,7 +2142,7 @@ def nnvid(args, kwargs):
         print(f"paths: {path1} {path2}")
         if os.path.exists(path1) and os.path.exists(path2):
             frame1 = cv2.imread(path1)
-            print(f'|... {file1} {frame1.shape}')
+            print(f'|...> {file1} {frame1.shape}')
             prvs = cv2.cvtColor(frame1, cv2.COLOR_BGR2GRAY)
             hsv = np.zeros_like(frame1)        
             frame2 = cv2.imread(path2)
@@ -2050,87 +2187,10 @@ def nnvid(args, kwargs):
       --video_input_dir "{args.video_frames_dir}" \
       --style_imgs_dir "{args.style_imgs_dir}" \
       --style_imgs {args.style_imgs_files[0]} \
-      --end_frame {end_frame} \
+      --frame_end {frame_end} \
       --max_size {max_size} \
       --verbose'
     print(cmd)
-
-
-    # fit args
-
-    frame = 1 # args.start_frame
-    frame_name = frame_format.format(str(frame).zfill(args.zfill))
-    frame_img_path = os.path.join(args.video_frames_dir, frame_name) 
-
-    # content
-    print(f"|===> nnvid content \n \
-        args.video_frames_dir: {args.video_frames_dir} \n \
-        frame: {frame} \n \
-        frame_name: {frame_name} \n \
-        frame_img_path: {frame_img_path} \n \
-        ")
-
-    content_frame = onfile.path_cv_pil(frame_img_path)
-    content_frame = onformat.pil_to_dnua(content_frame)
-    if 1 : onplot.pil_show_nua(content_frame)
-
-    # style
-    style_imgs = get_style_cvis(content_frame, args)
-    style_imgs = cvis_to_pils(style_imgs)
-    style_imgs = pils_to_dnuas(style_imgs)
-    if 1 : onplot.pil_show_nuas(style_imgs)
-
-    # input shape
-    input_img = get_init_image(args.first_frame_type, content_frame, style_imgs, frame, args)
-    b,w,h,c = np.shape(input_img)
-    input_shape = (w,h,c)    
-
-    print(f"|===> nnani shape \n \
-    cwd: {cwd} \n \
-    content_frame: {np.shape(content_frame)} \n \
-    style[0]shape: {np.shape(style_imgs[0])} \n \
-    input_img: {np.shape(input_img)} \n \
-    input_shape: {input_shape} \n \
-    ")
-
-
-    args.video_output_dir = args.video_styled_dir
-    args.content_frame_frmt = frame_format
-
-    if 1: # model
-        model = GAN(
-            input_shape = input_shape,          
-            args = args,
-        )
-
-    print(f"|===> nnani fit \n \
-        cwd: {cwd} \n \
-        args.start_frame: {args.start_frame} \n \
-        args.end_frame: {args.end_frame} \n \
-    ")
-
-    args.max_iterations = args.frame_iterations
-    for frame in range(start_frame, end_frame+1):
-        print("frame", frame)
-        print('\n---- RENDERING VIDEO FRAME: {}/{} ----\n'.format(frame, end_frame))
-
-        if frame == start_frame:
-            input_img = get_init_image(args.first_frame_type, content_frame, style_imgs, frame, args)
-        else:
-            input_img = get_init_image(args.init_frame_type, content_frame, style_imgs, frame, args)
-        if 1:
-            onplot.pil_show_nua(input_img ,"init image")
-
-        tick = time.time()
-
-        model.fit( 
-            input_img, content_frame, style_imgs,
-            # frame = frame,
-            args = args,
-        )
-
-        tock = time.time()
-        print('Frame {} elapsed time: {}'.format(frame, tock - tick))    
 
 
 #   ******************
