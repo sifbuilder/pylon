@@ -979,6 +979,20 @@ class Onplot:
         cv2.waitKey(wait)
 
 
+    @staticmethod  
+    def cv_resize(img, max_size= None, dim=None):
+        if max_size:
+            img = cv2.resize(img, (max_size, int((np.shape(img)[0]/np.shape(img)[1]) * max_size)))
+        
+        if dim:
+            img = cv2.resize(img, (
+                dim[0] if dim[0] > 0 else img.size[0],
+                dim[1] if dim[1] > 0 else img.size[1]
+                ), Image.ANTIALIAS)            
+
+        return img
+
+
     def cv_rgb(rgb, wait=2000):
         rgb = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
         cv2.imshow('img', rgb)
@@ -1326,7 +1340,7 @@ class Onfile:
             if w > mx:
                 h = (float(mx) / float(w)) * h
                 img = cv2.resize(img, dsize=(mx, int(h)), interpolation=cv2.INTER_AREA)
-            return img
+        return img
 
 
     @staticmethod
@@ -1379,6 +1393,14 @@ class Onfile:
             img = Onfile.path_to_tnua_with_tf(path, args)
             imgs.append(img)
         return imgs
+
+    @staticmethod
+    def names_to_paths(imgs_names, img_dir):
+        paths = []
+        for item in imgs_names:
+            path = os.path.join(img_dir, item)
+            paths.append(path)
+        return paths
 
     @staticmethod
     def folder_to_tnuas(folder, patt='*.jpg', max_size = None, img_nrows = None, img_ncols = None):
@@ -1812,10 +1834,16 @@ class Onimg:
 
 
     @staticmethod
-    def img_to_mask(img, outpath=None, height = None, width = None, ml=2*38, mh=255, visual=0):
+    def img_to_mask(img, outpath=None, 
+                    height=None, width=None, 
+                    threshold=76, maxVal=255, 
+                    thresmode=cv2.THRESH_BINARY,
+                    visual=0, verbose=0,
+                ):
         #https://answers.opencv.org/question/228538/how-to-create-a-binary-mask-for-medical-images/
 
-        print(f'|---> img_to_mask {np.shape(img)}')
+        if verbose > -1:
+            print(f'|---> img_to_mask {np.shape(img)}')
 
         #cv2.resize(src, dsize[, dst[, fx[, fy[, interpolation]]]])
         if height and width:
@@ -1843,8 +1871,8 @@ class Onimg:
 
         for channel in range(img.shape[2]):
             ret, image_thresh = cv2.threshold(img[:, :, channel],
-                                            ml, mh,
-                                            cv2.THRESH_BINARY)
+                                            threshold, maxVal,
+                                            thresmode)
 
             contours = cv2.findContours(image_thresh, 1, 1)[0]   
             cv2.drawContours(image_contours,
@@ -1865,11 +1893,46 @@ class Onimg:
 
         if visual > 0:
             cv2.imshow('inimg', img)            
-            cv2.imshow(outbasename, image_binary)
+            cv2.imshow('outimg', image_binary)
             cv2.waitKey(0) & 0xFF is 27
             cv2.destroyAllWindows()
 
         return image_binary
+
+
+    @staticmethod
+    def name_to_maskname(name):
+
+        name_base = os.path.splitext(name)[0]
+        name_ext = os.path.splitext(name)[1]
+        print("|...> name_base", name_base, name_ext)
+
+        name_mask = f'{name_base}_mask{name_ext}'
+        return name_mask
+        
+
+    @staticmethod
+    def name_to_unmaskname(name):
+
+        name_base = os.path.splitext(name)[0]
+        name_ext = os.path.splitext(name)[1]
+        print("|...> name_base", name_base, name_ext)
+
+        basename_unmask = name_base.replace('_mask', '')
+        name_unmask = f'{basename_unmask}{name_ext}'
+        return name_unmask
+        
+
+    @staticmethod
+    def path_to_maskpath(path):
+
+        dirname = os.path.dirname(path)
+        basename  =os.path.basename(path)
+
+        maskname = Onimg.name_to_maskname(basename)
+        maskpath = os.path.join(dirname, maskname)
+
+        return maskpath
 
     @staticmethod
     def path_to_mask(inpath, outpath, height = None, width = None, ml=2*38, mh=255, visual=0):
@@ -1923,25 +1986,51 @@ class Onimg:
 
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-        if op == 1:
+        
+        if op < 0: # reverse mask
+            mask = cv2.bitwise_not(mask)
+            op = abs(op)
+
+        if op == 1: # bitwise_and
             mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2RGB)
             img = cv2.bitwise_and(img, mask)
 
-        elif op == 2:
+        elif op == 2: # bitwise_or
             mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2RGB)
             img = cv2.bitwise_or(img, mask)
 
-        elif op == 3:
+        elif op == 3: # bitwise_xor
             mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2RGB)
             img = cv2.bitwise_xor(img, mask)
 
-        elif op == 4:
+        elif op == 4: # bitwise_not
             mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2RGB)
             img = cv2.bitwise_not(img, mask)
 
-        elif op == 5:
+        elif op == 5: # addWeighted
             mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2RGB)
             img = cv2.addWeighted(img, 0.5, mask, 0.5, 0)
+
+        elif op == 6: # thresh
+
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            blur = cv2.GaussianBlur(gray, (13,13), 0)
+            thresh = cv2.adaptiveThreshold(blur,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV,51,7)
+
+            # Morph close
+            kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3,3))
+            close = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel, iterations=1)
+
+            # Find contours, sort for largest contour, draw contour
+            cnts = cv2.findContours(close, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            cnts = cnts[0] if len(cnts) == 2 else cnts[1]
+            cnts = sorted(cnts, key=cv2.contourArea, reverse=True)
+            for c in cnts:
+                cv2.drawContours(thresh, [c], -1, (36,255,12), 2)
+                break
+            img = thresh
+
+
 
         img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
         return img
@@ -2209,6 +2298,113 @@ class Onvid:
         fn = frame_content_frmt.format(str(frame).zfill(zfill))
         path = os.path.join(video_output_dir, fn)
         save_cv2(path, output_img)
+
+    @staticmethod
+    def frame_cv2_rgb_vgg(frame, frames_dir, args):
+        frame_content_frmt = args.frame_content_frmt
+        max_size = args.max_size
+        zfill = args.zfill
+        frame_name = args.frame_content_frmt.format(str(frame).zfill(zfill))
+        frame_img_path = os.path.join(frames_dir, frame_name)
+        print("frame_img_path", frame_img_path)
+        img = cv2.imread(frame_img_path, cv2.IMREAD_COLOR)
+        img = onvgg.vgg_preprocess(img)
+        # img = onvgg.vgg_deprocess(img)
+        # cv2.imshow('img', img)
+        # cv2.waitKey(2000)    
+        return img
+
+    @staticmethod
+    def get_Lucas_Kanade_Optical_Flow(path):
+
+        cap = cv2.VideoCapture(path)
+
+        # params for ShiTomasi corner detection
+        feature_params = dict( maxCorners = 100,
+                            qualityLevel = 0.3,
+                            minDistance = 7,
+                            blockSize = 7 )
+
+        # Parameters for lucas kanade optical flow
+        lk_params = dict( winSize  = (15,15),
+                        maxLevel = 2,
+                        criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03))
+
+        # Create some random colors
+        color = np.random.randint(0,255,(100,3))
+
+        # Take first frame and find corners in it
+        ret, old_frame = cap.read()
+        old_gray = cv2.cvtColor(old_frame, cv2.COLOR_BGR2GRAY)
+        p0 = cv2.goodFeaturesToTrack(old_gray, mask = None, **feature_params)
+
+        # Create a mask image for drawing purposes
+        mask = np.zeros_like(old_frame)
+
+        while(1):
+            ret,frame = cap.read()
+            frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+            # calculate optical flow
+            p1, st, err = cv2.calcOpticalFlowPyrLK(old_gray, frame_gray, p0, None, **lk_params)
+
+            # Select good points
+            good_new = p1[st==1]
+            good_old = p0[st==1]
+
+            # draw the tracks
+            for i,(new,old) in enumerate(zip(good_new,good_old)):
+                a,b = new.ravel()
+                c,d = old.ravel()
+                mask = cv2.line(mask, (a,b),(c,d), color[i].tolist(), 2)
+                frame = cv2.circle(frame,(a,b),5,color[i].tolist(),-1)
+            img = cv2.add(frame,mask)
+
+            cv2.imshow('frame',img)
+            k = cv2.waitKey(30) & 0xff
+            if k == 27:
+                break
+
+            # Now update the previous frame and previous points
+            old_gray = frame_gray.copy()
+            p0 = good_new.reshape(-1,1,2)
+
+        cv2.destroyAllWindows()
+        cap.release()
+
+    
+    @staticmethod
+    def get_dense_Optical_Flow(path):
+
+        cap = cv2.VideoCapture(path)
+
+        ret, frame1 = cap.read()
+        prvs = cv2.cvtColor(frame1,cv2.COLOR_BGR2GRAY)
+        hsv = np.zeros_like(frame1)
+        hsv[...,1] = 255
+
+        while(1):
+            ret, frame2 = cap.read()
+            next = cv2.cvtColor(frame2,cv2.COLOR_BGR2GRAY)
+
+            flow = cv2.calcOpticalFlowFarneback(prvs,next, None, 0.5, 3, 15, 3, 5, 1.2, 0)
+
+            mag, ang = cv2.cartToPolar(flow[...,0], flow[...,1])
+            hsv[...,0] = ang*180/np.pi/2
+            hsv[...,2] = cv2.normalize(mag,None,0,255,cv2.NORM_MINMAX)
+            rgb = cv2.cvtColor(hsv,cv2.COLOR_HSV2BGR)
+
+            cv2.imshow('frame2',rgb)
+            k = cv2.waitKey(30) & 0xff
+            if k == 27:
+                break
+            elif k == ord('s'):
+                cv2.imwrite('opticalfb.png',frame2)
+                cv2.imwrite('opticalhsv.png',rgb)
+            prvs = next
+
+        cap.release()
+        cv2.destroyAllWindows()
 
 #   ******************
 #    Ondata
