@@ -52,3 +52,7 @@ os.system(cmd)
 #tensorflow-gpu==2.1.0
 cmd = f'pip install azureml-sdk matplotlib numpy opencv-python pytest transformations'
 os.system(cmd)
+
+# create a Jupyter notebook .ipynb from a Python source code
+cmd = f'pip install p2j'
+os.system(cmd)
