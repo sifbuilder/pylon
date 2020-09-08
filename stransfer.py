@@ -605,12 +605,9 @@ def write_image_output(output_img,
         args=None,
     ):
 
-    img_output_dir = args.img_output_dir
-    max_epochs = args.max_epochs
-
     if args.verbose > 1:
         print(f'|---> write_image_output \n \
-            to img_output_dir: {img_output_dir} \n \
+            to img_output_dir: {args.img_output_dir} \n \
             epoch: {epoch} \n \
         ')
 
@@ -619,29 +616,33 @@ def write_image_output(output_img,
     style_imgs = onformat.dnuas_to_pils(style_imgs)
     input_img = onformat.nua_to_pil(input_img)
 
+    # save result image
     img_file = f'output_'+str(epoch)+'.png'
-    content_file = f'content.jpg'
-    init_file = f'init.jpg'
-
-    img_path = os.path.join(img_output_dir, img_file)
-    content_path = os.path.join(img_output_dir, content_file)
-    init_path = os.path.join(img_output_dir, init_file)
-
+    img_path = os.path.join(args.img_output_dir, img_file)
     onfile.pil_to_file_with_cv(img_path, output_img)
+
+    # save content image
+    content_file = f'content.jpg'
+    content_path = os.path.join(args.img_output_dir, content_file)
     onfile.pil_to_file_with_cv(content_path, content_img)
+
+    # save input image
+    init_file = f'init.jpg'
+    init_path = os.path.join(args.img_output_dir, init_file)
     onfile.pil_to_file_with_cv(init_path, input_img)
 
     style_files = []
     style_paths = []
+
+    # save style images
     for i, style_img in enumerate(style_imgs):
         style_files.append(f'style_{str(i)}.png')
-        style_paths.append(os.path.join(img_output_dir, style_files[i]))
+        style_paths.append(os.path.join(args.img_output_dir, style_files[i]))
         path = style_paths[i]
         onfile.pil_to_file_with_cv(path, style_img)
 
-  
     # save the configuration settings
-    out_file = os.path.join(img_output_dir, 'meta_data.txt')
+    out_file = os.path.join(args.img_output_dir, 'meta_data.txt')
     f = open(out_file, 'w')
     f.write(f'image_name: {img_path}\n')
     f.write(f'content: {content_path}\n')
@@ -658,9 +659,11 @@ def write_image_output(output_img,
 
 
     f.write(f'init_type: {args.init_img_type}\n')
+
     f.write(f'content_weight: {args.content_weight}\n')
     f.write(f'content_layers: {args.content_layers}\n')
     f.write(f'content_layers_weights: {args.content_layers_weights}\n')
+
     f.write(f'style_imgs_weights: {args.style_imgs_weights}\n')
     f.write(f'style_layers: {args.style_layers}\n')
     f.write(f'style_layers_weights: {args.style_layers_weights}\n')
@@ -668,15 +671,16 @@ def write_image_output(output_img,
     f.write(f'total_variation_weight: {args.total_variation_weight}\n')
 
     f.write(f'content_size: {args.content_size}\n')
-    f.write(f'max_size: {args.max_size}\n')
     f.write(f'input_shape: {args.input_shape}\n')
 
     f.write(f'optimizer: {args.optimizer}\n')
 
+    f.write(f'max_size: {args.max_size}\n')
     f.write(f'frame_iterations: {args.frame_iterations}\n')
     f.write(f'max_epochs: {args.max_epochs}\n')
     f.write(f'steps_per_epoch: {args.steps_per_epoch}\n')
     f.write(f'print_iterations: {args.print_iterations}\n')
+
 
     f.close()
 
@@ -1133,7 +1137,18 @@ class GAN(tf.keras.models.Model):
         if 0:
             self.net.summary()
 
-        self.optimizer = tf.optimizers.Adam(learning_rate=0.02, beta_1=0.99, epsilon=1e-1)
+        self.optimizer = tf.optimizers.Adam(
+            learning_rate=0.01,
+            beta_1=0.99, 
+            epsilon=1e-1
+        )
+
+        #self.optimizer = tf.keras.optimizers.SGD(
+        #    learning_rate=0.1, 
+        #    momentum=0.9, 
+        #    #nesterov=False, 
+        #    #name='SGD'
+        #)    
 
         # if not hasattr(self, "image"):  # Or set self.v to None in __init__ 
         #     image = tf.Variable(self.content_img) 
@@ -1286,11 +1301,13 @@ class GAN(tf.keras.models.Model):
         for epoch in range(max_epochs):
             step = 0
             for step_in_epoch in range(steps_per_epoch):
-                if video:
-                    print(f'|---> fit {frame}:{epoch}:{step}')
-                else:
-                    print(f'|---> fit {epoch}:{step}')
                 step += 1
+
+                if 1 and step % args.print_iterations == 0:
+                    if video:
+                        print(f'|---> fit {frame}:{epoch}:{step}')
+                    else:
+                        print(f'|---> fit {epoch}:{step}')
 
                 # ==========================================
 
@@ -1300,8 +1317,8 @@ class GAN(tf.keras.models.Model):
 
                 print(".", end='')
 
-            nsteps = args.print_iterations
-            if 1 and step % nsteps == 0: # show results each n steps
+
+            if 1 and step % args.print_iterations == 0: # show results each n steps
                 if 0:
                     try:
                         # display image per epoch _e_
@@ -1319,7 +1336,7 @@ class GAN(tf.keras.models.Model):
             img_name = image_epoch_format.format(str(epoch).zfill(zfill))        
             img_path = os.path.join(img_output_dir, img_name)
             #onfile.pil_to_file_with_cv(img_path, self.image)
-            
+
             if 1: # write image per epoch
                 write_image_output(
                     output_img = self.image, 
@@ -1331,7 +1348,8 @@ class GAN(tf.keras.models.Model):
                 )
 
             if 1 and visual:
-                if 0: print(f'|---> pil combo_img epoch " {epoch}')
+                if 0:
+                    print(f'|---> pil combo_img epoch: {epoch}')
                 onplot.pil_show_nua(self.image)
 
         if video:

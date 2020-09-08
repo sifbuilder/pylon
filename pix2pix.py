@@ -1485,7 +1485,8 @@ def nndanboo(args, kwargs):
 
         marker = cv2.cvtColor(marker, cv2.COLOR_BGR2GRAY) # marker gray
         fills = onlllyas.get_fill(marker / 255)
-        print(fills)
+        if 0:
+            print(f'segment fills: {fills}')
 
         ## *********************************************
         for fill in fills:
