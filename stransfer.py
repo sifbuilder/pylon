@@ -2085,7 +2085,7 @@ def nnani(args, kwargs):
 #   ******************
 def main():
 
-    parser = argparse.ArgumentParser(description='''Run 'python %(prog)s <subcommand> --help' for subcommand help.''')
+    parser = argparse.ArgumentParser(description='Run "python %(prog)s <subcommand> --help" for subcommand help.')
 
     onutil.dodrive()
     ap = getap()

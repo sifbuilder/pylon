@@ -320,7 +320,7 @@ class Onutil:
             xp[key] = tree[key]
 
 
-        parser = argparse.ArgumentParser(description='''Run 'python %(prog)s <subcommand> --help' for subcommand help.''')
+        parser = argparse.ArgumentParser(description='Run "python %(prog)s <subcommand> --help" for subcommand help.')
         for p in xp:
             cls = type(xp[p])
             parser.add_argument('--'+p, type=cls, default=xp[p])
