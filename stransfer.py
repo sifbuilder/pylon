@@ -178,7 +178,6 @@ def getap():
         ap[key] = hp[key]
     return ap
 
-
 def getxp(cp):
 
     yp = {
