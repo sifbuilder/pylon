@@ -313,9 +313,7 @@ def getxp(cp):
         xp[key] = tree[key]
 
     for key in yp.keys():
-
         print(key, yp[key])
-
         xp[key] = yp[key]
    
     return xp
