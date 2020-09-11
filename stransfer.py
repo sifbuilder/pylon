@@ -82,13 +82,37 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 print(f'|===> {tf.__version__}')
 
+if 1: # get base.py from github
+    cwd = os.getcwd()
+    base_path = os.path.join(cwd, 'base.py')
+    if not os.path.exists(base_path):
+
+        base_file = 'base.py'
+        urlfolder = 'https://raw.githubusercontent.com/sifbuilder/pylon/master/'
+        url = f'{urlfolder}{base_file}'
+
+        print(f"|===> nnimg: get base file \n \
+            urlfolder: {urlfolder} \n \
+            url: {url} \n \
+            base_path: {base_path} \n \
+        ")
+
+        tofile = tf.keras.utils.get_file(f'{base_path}', origin=url, extract=True)
+
+    else:
+        print(f"|===> base in cwd {cwd}")
+
+
+
 #   ******************
 #   FUNS
 #
 #   ******************
 try:
     # check if base.Onpyon is defined
+
     var = Onpyon()
+
 except NameError:
     # Onpyon not defined
 
@@ -118,7 +142,7 @@ onlllyas = Onlllyas()
 
 def getap():
     cp = {
-        "primecmd": 'nnani',        
+        "primecmd": 'nnimg',        
 
         "MNAME": "stransfer",      
         "AUTHOR": "xueyangfu",      
@@ -1823,7 +1847,6 @@ def nnani(args, kwargs):
         content_filename=os.path.splitext(os.path.basename(args.video_file))[0]
         content_filename=f"{content_filename}" # eg portu
 
-
         args.img_output_dir=os.path.join(args.proj_dir, 'outimgs')
 
         args.data_dir = os.path.join(args.proto_dir, 'data')
@@ -1850,6 +1873,17 @@ def nnani(args, kwargs):
         os.makedirs(args.video_output_dir, exist_ok=True)
         os.makedirs(args.img_output_dir, exist_ok=True)
 
+        if not args.video_input_path: # try
+            urlfolder = 'https://github.com/sifbuilder/eodoes/blob/master/packages/eodoes-eodo-nnstransfer/datasrc/'
+            url = f'{urlfolder}{args.video_file}'
+            topath = args.video_input_path # os.path.join(args.dataorg_dir, f'{args.video_file}')
+
+            print(f"|===> nnani: video src does not exist\n \
+                urlfolder: {urlfolder} \n \
+                url: {url} \n \
+                topath: {topath} \n \
+            ")
+            tofile = tf.keras.utils.get_file(f'{topath}', origin=url, extract=True)
         assert os.path.exists(args.video_input_path), f'input vide {args.video_input_path} does not exist'
 
 
