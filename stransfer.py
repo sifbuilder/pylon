@@ -1887,7 +1887,7 @@ def nnani(args, kwargs):
         if args.visual > 1:
             onplot.pil_show_nua(content_frame)
 
-if 1: #   style images
+    if 1: #   style images
         style_imgs = onfile.names_to_nuas_with_tf(args.style_imgs_files, args.style_imgs_dir, args,)
         print(f'|===> nnani: styles \n \
             args.style_imgs_files: {args.style_imgs_files} \n \
