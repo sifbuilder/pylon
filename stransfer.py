@@ -1878,11 +1878,11 @@ def nnani(args, kwargs):
         img = onfile.path_cv_pil(args.frame_img_path)
         img = ondata.pil_resize(img, ps=args.content_size)
         img = onformat.pil_to_dnua(img)
-        print(f"|===> nnani: content \n \
+        print(f'|===> nnani: content \n \
             args.frame_img_path: {args.frame_img_path} \n \
             args.content_imgs_dir: {args.content_imgs_dir} \n \
             img shape: {np.shape(img)} \n \
-        ")
+        ')
         content_frame = img
         if args.visual > 1:
             onplot.pil_show_nua(content_frame)
@@ -1943,11 +1943,11 @@ def nnani(args, kwargs):
 
     if 1: # fit
 
-        print(f"|===> nnani fit \n \
+        print(f'|===> nnani fit \n \
             cwd: {os.getcwd()} \n \
             args.video_styled_dir: {args.video_styled_dir} \n \
             args.img_output_dir: {args.img_output_dir} \n \
-        ")
+        ')
 
         args.max_iterations = args.frame_iterations
         for frame in range(args.frame_start, args.frame_end+1):
@@ -1976,10 +1976,10 @@ def nnani(args, kwargs):
 
             input_img = onimg.tf_resize_nua(input_img, args=args)
 
-            print(f"|===> fit input image \n \
+            print(f'|===> fit input image \n \
                 cwd: {os.getcwd()} \n \
                 input_img shape: {np.shape(input_img)} \n \
-            ")
+            ')
 
             model.fit( 
                 input_img, content_frame, style_imgs,
@@ -1991,10 +1991,10 @@ def nnani(args, kwargs):
         
         os.chdir(args.code_dir) # _e_ not std
 
-        print(f"|===> nnani render stylized video \n \
+        print(f'|===> nnani render stylized video \n \
             cwd: {os.getcwd()} \n \
             video: {args.video} \n \
-        ")
+        ')
 
         cmd = f'python neural_style.py --video \
         --video_input_dir "{args.video_frames_dir}" \
