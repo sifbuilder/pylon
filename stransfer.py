@@ -1889,14 +1889,14 @@ def nnani(args, kwargs):
 
 if 1: #   style images
         style_imgs = onfile.names_to_nuas_with_tf(args.style_imgs_files, args.style_imgs_dir, args,)
-        print(f"|===> nnani: styles \n \
+        print(f'|===> nnani: styles \n \
             args.style_imgs_files: {args.style_imgs_files} \n \
             args.style_imgs_dir: {args.style_imgs_dir} \n \
             shapes: {[str(np.shape(style_imgs[i])) for i,img in enumerate(style_imgs)]} \n \
-        ")
+        ')
         if 0 and args.visual:
             print(f'|---> vis styles')
-            onplot.pil_show_nuas(style_imgs, ["[   .   ] style_imgs"])
+            onplot.pil_show_nuas(style_imgs, ['[   .   ] style_imgs'])
 
     if 1: # input shape
         print(f'|===> input shape  \n \
