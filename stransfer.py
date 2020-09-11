@@ -879,17 +879,12 @@ def sum_longterm_temporal_losses(sess, net, frame, input_img, args=None):
 def sum_shortterm_temporal_losses(sess, net, frame, input_img, args=None):
   x = sess.run(net['input'].assign(input_img))
   prev_frame = frame - 1
-
-  print("sum_longterm_temporal_losses frame_init_type", args.frame_init_type)
   w = input_img # _e_
   if args.frame_init_type == 'prev':
       w = get_prev_frame(frame, args) # _e_
   elif args.frame_init_type == 'prev_warped':
       w = get_prev_warped_frame(frame, args)
-
-  #   w = get_prev_warped_frame(frame, args)
-
-  c = get_content_weights(frame, prev_frame, args)
+  c = get_content_weights(frame, prev_frame, args) # _e_
   loss = temporal_loss(x, w, c)
   return loss
 
