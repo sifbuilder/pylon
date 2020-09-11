@@ -101,11 +101,10 @@ if 1: # get base.py from github
 #   FUNS
 #
 #
+# check if base.Onpyon is defined
 try:
-    # check if base.Onpyon is defined
     var = Onpyon()
 except NameError:
-    # Onpyon not defined
     sys.path.append('../')  # if called from eon, modules are in parallel folder
     sys.path.append('./')  #  if called from dnns, modules are in folder
     from base import *
