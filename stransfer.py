@@ -29,20 +29,15 @@ import math
 from math import floor, log2
 from random import random
 from pylab import *
-
-# import IPython.display as display
 from IPython.core.display import display
-
 import PIL
 from PIL import Image
 PIL.Image.MAX_IMAGE_PIXELS = 933120000
 
 import scipy.ndimage as pyimg
-
 import cv2
 import imageio
 import glob
-
 import matplotlib as mpl
 import matplotlib.pyplot as plt 
 import matplotlib.image as mgimg
@@ -102,12 +97,10 @@ if 1: # get base.py from github
     else:
         print(f"|===> base in cwd {cwd}")
 
-
-
-#   ******************
+#
 #   FUNS
 #
-#   ******************
+#
 try:
     # check if base.Onpyon is defined
 
@@ -134,12 +127,10 @@ ontree = Ontree()
 onvgg = Onvgg()
 onlllyas = Onlllyas()
 
-
-#   *******************
+#
 #   CONTEXT
 #
-#   *******************
-
+#
 def getap():
     cp = {
         "primecmd": 'nnimg',        
@@ -338,12 +329,10 @@ def getxp(cp):
    
     return xp
 
-
-#   ******************
+#
 #   FUNS VIDEO
 #
-#   ***************
-
+#
 def get_content_frame(frame, args):
         
     video_input_dir = args.video_input_dir
@@ -362,7 +351,6 @@ def get_content_frame(frame, args):
     return img
 
 
-
 def _get_style_images(content_img, args=None):
   _, ch, cw, cd = content_img.shape
   style_imgs = []
@@ -370,7 +358,6 @@ def _get_style_images(content_img, args=None):
     path = os.path.join(args.style_imgs_dir, style_fn)
     # bgr image
     img = cv2.imread(path, cv2.IMREAD_COLOR)
-    check_image(img, path)
     img = img.astype(np.float32)
     img = cv2.resize(img, dsize=(cw, ch), interpolation=cv2.INTER_AREA)
     img = onvgg.vgg_preprocess(img)
@@ -530,8 +517,6 @@ def get_mask_image(mask_img, width, height,
     img /= mx
     return img
 
-
-#   ****************
 #   get_prev_frame: previously stylized frame
 def get_prev_frame(frame, args=None):
     video_output_dir = args.video_input_dir # _e_ tbc
@@ -619,8 +604,7 @@ def convert_to_original_colors(content_img, stylized_img, args=None):
     dst = onvgg.vgg_preprocess(dst)
     return dst
 
-
-#   ******************
+#
 #   FUNCS LOG
 #
 def write_image_output(output_img, 
@@ -704,12 +688,9 @@ def write_image_output(output_img,
     f.write(f'max_epochs: {args.max_epochs}\n')
     f.write(f'steps_per_epoch: {args.steps_per_epoch}\n')
     f.write(f'print_iterations: {args.print_iterations}\n')
-
-
     f.close()
 
-
-#   *****************
+#
 #   FUNCS MODEL
 #
 def read_weights_file(path):
@@ -767,14 +748,10 @@ def minimize_with_adam(sess, net, optimizer, init_img, loss,
             print("At iterate {}\tf=  {}".format(iterations, curr_loss))
         iterations += 1
 
-
-#   ******************
+#
 #   NETS
 #
-
-'''
-  'a neural algorithm for artistic style' loss functions
-'''
+# a neural algorithm for artistic style' loss functions
 def content_layer_loss(p, x, args=None):
     _, h, w, d = p.get_shape()
     M = h * w # h.value * w.value
@@ -884,9 +861,7 @@ def sum_content_losses(net, combo, content_img, args=None):
     content_loss /= float(len(args.content_layers))
     return content_loss
 
-'''
-  'artistic style transfer for videos' loss functions
-'''
+# artistic style transfer for videos' loss functions
 def temporal_loss(x, w, c):
   c = c[np.newaxis,:,:,:]
   D = float(x.size)
@@ -938,9 +913,7 @@ def sum_shortterm_temporal_losses(sess, net, frame, input_img, args=None):
   loss = temporal_loss(x, w, c)
   return loss
 
-'''
-  utilities and i/o
-'''
+# utilities and i/o
 def read_image(path):
   # bgr image
   img = cv2.imread(path, cv2.IMREAD_COLOR)
@@ -1044,9 +1017,7 @@ def check_image(img, path):
   if img is None:
     raise OSError(errno.ENOENT, "No such file", path)
 
-'''
-  rendering -- where the magic happens
-'''
+# rendering -- where the magic happens
 def compute_loss(combo):
     loss = tf.zeros(shape=())
 
@@ -1386,19 +1357,17 @@ class GAN(tf.keras.models.Model):
         end = time.time()
         print("Total time: {:.1f}".format(end-start))
 
-#   ******************
+#
 #   CMDS
 #
-#   ****************
-'''
-   stylize
-    sum_style_losses
-    sum_masked_style_losses args.style_mask
+#
 
-'''
-#   *******************
+#
 #   nnimg
 #
+#   stylize
+#    sum_style_losses
+#    sum_masked_style_losses args.style_mask
 def nnimg(args, kwargs):
 
     if 0:
@@ -1613,7 +1582,6 @@ def nnimg(args, kwargs):
             print(f'|---> vis styles')
             onplot.pil_show_nuas(style_imgs, ["[   .   ] style_imgs"])
 
-
     if 1: #   mask style images
 
         b,h,w,c = np.shape(content_img)
@@ -1790,9 +1758,7 @@ def nnimg(args, kwargs):
             cv2.waitKey(0) & 0xFF is 27
             cv2.destroyAllWindows()
 
-
-
-#   *******************
+#
 #   nnani
 #
 def nnani(args, kwargs):
@@ -2112,11 +2078,11 @@ def nnani(args, kwargs):
         #onvid.frames_to_video(args.video_styled_dir, video_output_path, fps)
         onvid.folder_to_gif(args.video_styled_dir, gif_output_path)
         
-#   ******************
+#
 #
 #   MAIN
 #
-#   ******************
+#
 def main():
 
     parser = argparse.ArgumentParser(description='Run "python %(prog)s <subcommand> --help" for subcommand help.')
@@ -2164,10 +2130,9 @@ def main():
             print(f'|===> call {name}')
             globals()[name](args, kwargs) # pass args to nn cmd
 
-#---------------------------------------------------------------
+#
+#
 # python base/base.py nninfo
 if __name__ == "__main__":
     print("|===>", __name__)
     main()
-
-#---------------------------------------------------------------
