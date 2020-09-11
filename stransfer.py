@@ -103,15 +103,11 @@ if 1: # get base.py from github
 #
 try:
     # check if base.Onpyon is defined
-
     var = Onpyon()
-
 except NameError:
     # Onpyon not defined
-
     sys.path.append('../')  # if called from eon, modules are in parallel folder
     sys.path.append('./')  #  if called from dnns, modules are in folder
-
     from base import *
 
 onutil = Onutil()
@@ -167,7 +163,6 @@ def getap():
             pass
     cp["local_prefix"] = local_prefix
 
-
     tree = ontree.tree(cp)
     for key in tree.keys():
         cp[key] = tree[key]
@@ -211,7 +206,6 @@ def getxp(cp):
         "exp_decay": [100., 100, 0.96], # [initial_learning_rate, decay_steps, decay_rate]
         # "momentum": 0.0, 
         # "nesterov": 0
-
 
         "content_imgs_files": [],
         "content_imgs_dir": cp["data_dir"],
@@ -269,7 +263,6 @@ def getxp(cp):
         # "total_variation_weight": 1e-6, # 300,
         "total_variation_weight": 0.001,
         "total_variation_weight": 1e-3,
-
 
         # "video_input_dir": os.path.join(cp["proj_dir"], 'intput_vid'),        
         "video_input_dir": os.path.join(cp["data_dir"], ''),
@@ -517,8 +510,8 @@ def get_mask_image(mask_img, width, height,
     img /= mx
     return img
 
-#   get_prev_frame: previously stylized frame
 def get_prev_frame(frame, args=None):
+    #   get_prev_frame: previously stylized frame    
     video_output_dir = args.video_input_dir # _e_ tbc
     frame_content_frmt = args.frame_content_frmt
     zfill = args.zfill
@@ -659,30 +652,22 @@ def write_image_output(output_img,
     for i, style_path in enumerate(style_paths):
         f.write(f'styles[{str(i)}]: {style_path}\n')
 
-
     if 'mask_imgs_files' in vars(args).keys():
         for i, style_mask_img in enumerate(args.mask_imgs_files):
             style_mask_img_path = os.path(args.style_imgs_dir, args.mask_imgs_files[i])
             f.write(f'style_masks[{str(i)}]: {style_mask_img_path}\n')        
 
-
     f.write(f'init_type: {args.init_img_type}\n')
-
     f.write(f'content_weight: {args.content_weight}\n')
     f.write(f'content_layers: {args.content_layers}\n')
     f.write(f'content_layers_weights: {args.content_layers_weights}\n')
-
     f.write(f'style_imgs_weights: {args.style_imgs_weights}\n')
     f.write(f'style_layers: {args.style_layers}\n')
     f.write(f'style_layers_weights: {args.style_layers_weights}\n')
-
     f.write(f'total_variation_weight: {args.total_variation_weight}\n')
-
     f.write(f'content_size: {args.content_size}\n')
     f.write(f'input_shape: {args.input_shape}\n')
-
     f.write(f'optimizer: {args.optimizer}\n')
-
     f.write(f'max_size: {args.max_size}\n')
     f.write(f'frame_iterations: {args.frame_iterations}\n')
     f.write(f'max_epochs: {args.max_epochs}\n')
@@ -891,7 +876,6 @@ def sum_longterm_temporal_losses(sess, net, frame, input_img, args=None):
     elif args.frame_init_type == 'prev_warped':
         w = get_prev_warped_frame(frame, args)
 
-    # w = get_prev_warped_frame(frame, args)
     c = get_longterm_weights(frame, prev_frame)
     loss += temporal_loss(x, w, c)
   return loss
@@ -1149,7 +1133,6 @@ class GAN(tf.keras.models.Model):
         #     image = tf.Variable(self.content_img) 
         # self.image = image
 
-
     def extract_features(self, imgs, layers=None):
         net = self.net
         imgshape = self.imgshape
@@ -1230,7 +1213,6 @@ class GAN(tf.keras.models.Model):
         image.assign(clip_0_1(image))
         self.image = image
 
-
     def fit(self, input_img, content_img, style_imgs, 
             frame = None,
             args  = None
@@ -1265,7 +1247,6 @@ class GAN(tf.keras.models.Model):
             style_mask: {args.style_mask} \n \
         ')
 
-
         if visual > 1:
             print(f'|---> pil input_img')
             if 1: onplot.pil_show_nua(input_img)        
@@ -1282,7 +1263,6 @@ class GAN(tf.keras.models.Model):
             if args.style_mask_imgs:
                 print(f'|---> pil combo_img')
                 onplot.pil_show_nua(self.image)
-
 
         # # ============
 
@@ -1311,7 +1291,6 @@ class GAN(tf.keras.models.Model):
                 # =========================================
 
                 print(".", end='')
-
 
             if 1 and step % args.print_iterations == 0: # show results each n steps
                 if 0:
@@ -1433,7 +1412,6 @@ def nnimg(args, kwargs):
         #args.style_imgs_thress = [(38,cv2.THRESH_BINARY)]
         args.style_imgs_thress = [(38, cv2.THRESH_BINARY_INV)]
 
-
     if 0:
         args.PROJECT = 'portubridge'
         args.DATASET = 'portubridge'        
@@ -1446,7 +1424,6 @@ def nnimg(args, kwargs):
     xp = getxp(vars(args))
     args = onutil.pargs(xp)    
     onutil.ddict(vars(args), 'args')
-
 
     if 1: # config
 
@@ -1523,7 +1500,6 @@ def nnimg(args, kwargs):
 
         assert os.path.exists(content_img_path), f"content image {content_img_path} does not exist"
 
-
         img = onfile.path_cv_pil(content_img_path)
         img = ondata.pil_resize(img, ps=args.content_size)
         img = onformat.pil_to_dnua(img)
@@ -1576,7 +1552,6 @@ def nnimg(args, kwargs):
             args.style_imgs_dir: {args.style_imgs_dir} \n \
             shapes: {[str(np.shape(style_imgs[i])) for i,img in enumerate(style_imgs)]} \n \
         ")
-
 
         if args.visual > 1:
             print(f'|---> vis styles')
@@ -1706,7 +1681,6 @@ def nnimg(args, kwargs):
         if 0 and args.visual:
             onplot.pil_show_nua(input_img, "[   .   ] input_img")
 
-
     if 1: # model
 
         b,w,h,c = np.shape(input_img)
@@ -1716,7 +1690,6 @@ def nnimg(args, kwargs):
             input_shape: {input_shape} \n \
         ')
         model = GAN( input_shape = input_shape, args = args, )
-
 
     if 1: # fit
 
@@ -1732,7 +1705,6 @@ def nnimg(args, kwargs):
             args = args
         )
 
-
     if 0: # mask result
         epoch = 10
         basename = f'output_{int(epoch-1)}.png'
@@ -1740,7 +1712,6 @@ def nnimg(args, kwargs):
 
         print(f'|---> cv img_output_path img {img_output_path}')
         output = onfile.path_to_cvi(img_output_path)
-
 
         content_img_path = os.path.join(args.content_imgs_dir, args.content_img_file)
         content = onfile.path_to_cvi(content_img_path)
@@ -1852,7 +1823,6 @@ def nnani(args, kwargs):
             tofile = tf.keras.utils.get_file(f'{topath}', origin=url, extract=True)
         assert os.path.exists(args.video_input_path), f'input vide {args.video_input_path} does not exist'
 
-
     if 1: # git
         onutil.get_git(args.AUTHOR, args.GITPOD, args.code_dir)
 
@@ -1872,7 +1842,6 @@ def nnani(args, kwargs):
             print(f"cmd: {cmd}")
             os.system(cmd)            
 
-
     if 0: # frames size
         ppm = os.path.join(args.video_frames_dir, 'frame0000.jpg')
         im = Image.open(ppm)
@@ -1882,7 +1851,6 @@ def nnani(args, kwargs):
         print(f"|===> nnani frame size \n \
             max_size: {max_size} \n \
         ")
-
 
     if 1: # video
 
@@ -1944,7 +1912,6 @@ def nnani(args, kwargs):
             print(f'|---> vis styles')
             onplot.pil_show_nuas(style_imgs, ["[   .   ] style_imgs"])
 
-
     if 1: # input shape
         print(f'|===> input shape  \n \
             cwd: {os.getcwd()} \n \
@@ -1960,7 +1927,6 @@ def nnani(args, kwargs):
             frame=frame,  
             args=args
         )
- 
 
     print(f'|===> nnani  \n \
         cwd: {os.getcwd()} \n \
@@ -1976,7 +1942,6 @@ def nnani(args, kwargs):
         args.input_img shape: {np.shape(input_img)} \n \
     ')
 
-
     if 1: # model
 
         b,w,h,c = np.shape(input_img)
@@ -1989,7 +1954,6 @@ def nnani(args, kwargs):
             args.img_output_dir: {args.img_output_dir} \n \
         ")
         model = GAN(input_shape = input_shape, args = args,)
-
 
     if 1: # fit
 
