@@ -864,8 +864,6 @@ def sum_longterm_temporal_losses(sess, net, frame, input_img, args=None):
   loss = 0.
   for j in range(args.prev_frame_indices):
     prev_frame = frame - j
-
-    print("sum_longterm_temporal_losses", args.frame_init_type)
     w = input_img # _e_
     if args.frame_init_type == 'prev':
         w = get_prev_frame(frame, args) # _e_
@@ -900,7 +898,6 @@ def read_image(path):
 def write_image(path, img):
   img = onvgg.vgg_deprocess(img)
   cv2.imwrite(path, img)
-
 
 def preprocess_tensor(inputs):
 
@@ -1204,6 +1201,7 @@ class GAN(tf.keras.models.Model):
         image.assign(clip_0_1(image))
         self.image = image
 
+    #
     def fit(self, input_img, content_img, style_imgs, 
             frame = None,
             args  = None
@@ -1467,7 +1465,6 @@ def nnimg(args, kwargs):
         os.makedirs(args.img_output_dir, exist_ok=True)
         os.makedirs(args.content_imgs_dir, exist_ok=True) # data_dir
 
-
     if 1: # content image: (422, 512, 3) <class 'numpy.ndarray'>  [[[ 99 165 160]
 
         content_img_path = os.path.join(args.content_imgs_dir, args.content_img_file)
@@ -1614,7 +1611,6 @@ def nnimg(args, kwargs):
             if args.visual > 0:
                 print(f'|---> vis masks')
                 onplot.pil_show_nuas(style_mask_imgs, ["[   .   ] style_mask_imgs"])
-
 
     if 0: #   mask content images
 
@@ -1891,8 +1887,7 @@ def nnani(args, kwargs):
         if args.visual > 1:
             onplot.pil_show_nua(content_frame)
 
-
-    if 1: #   style images
+if 1: #   style images
         style_imgs = onfile.names_to_nuas_with_tf(args.style_imgs_files, args.style_imgs_dir, args,)
         print(f"|===> nnani: styles \n \
             args.style_imgs_files: {args.style_imgs_files} \n \
