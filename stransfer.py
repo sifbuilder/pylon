@@ -1900,7 +1900,7 @@ def nnani(args, kwargs):
                 urlfolder = 'https://raw.githubusercontent.com/sifbuilder/eodoes/master/packages/eodoes-eodo-eonart/img/'
                 url = f'{urlfolder}{base_file}'
 
-                print(f"|===> nnimg: get base file \n \
+                print(f"|===> nnimg: get style base file \n \
                     urlfolder: {urlfolder} \n \
                     url: {url} \n \
                     base_path: {base_path} \n \
