@@ -329,8 +329,10 @@ def nnjoin(args, kwargs):
         print(f"|---> cmd {cmd}")
         os.system(cmd)
 
-        os.remove(tmpfile_path)
-        os.remove(newfile_path)
+        if os.path.exists(tmpfile_path):
+            os.remove(tmpfile_path)
+        if os.path.exists(newfile_path):
+            os.remove(newfile_path)
         os.rename(interfile_path, newfile_path) # interfile_path => newfile_path
 
 
