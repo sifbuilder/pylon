@@ -1888,6 +1888,30 @@ def nnani(args, kwargs):
             onplot.pil_show_nua(content_frame)
 
     if 1: #   style images
+
+        style_img_paths = [os.path.join(args.style_imgs_dir, item) for item in args.style_imgs_files]
+        for style_img_path in style_img_paths:
+            print(f'|... style_img_path {style_img_path}')
+
+            if not os.path.exists(style_img_path):
+
+                base_path = style_img_path
+                base_file = os.path.basename(style_img_path)
+                urlfolder = 'https://github.com/sifbuilder/eodoes/tree/master/packages/eodoes-eodo-eonart/img/'
+                url = f'{urlfolder}{base_file}'
+
+                print(f"|===> nnimg: get base file \n \
+                    urlfolder: {urlfolder} \n \
+                    url: {url} \n \
+                    base_path: {base_path} \n \
+                ")
+
+                tofile = tf.keras.utils.get_file(f'{base_path}', origin=url, extract=True)
+
+            else:
+                base_file = os.path.basename(style_img_path)
+                print(f"|===> style file {base_file} already in {args.style_imgs_dir}")        
+
         style_imgs = onfile.names_to_nuas_with_tf(args.style_imgs_files, args.style_imgs_dir, args,)
         print(f'|===> nnani: styles \n \
             args.style_imgs_files: {args.style_imgs_files} \n \
