@@ -15,16 +15,16 @@ import requests
 import zipfile
 import random
 import datetime
-        
+#
 from functools import partial
 from importlib import import_module
-
+#
 import logging
 logging.getLogger('tensorflow').setLevel(logging.ERROR)
-
+#
 import numpy as np
 from numpy import *
-
+#
 import math
 from math import floor, log2
 from random import random
@@ -33,7 +33,7 @@ from IPython.core.display import display
 import PIL
 from PIL import Image
 PIL.Image.MAX_IMAGE_PIXELS = 933120000
-
+#
 import scipy.ndimage as pyimg
 import cv2
 import imageio
@@ -44,12 +44,12 @@ import matplotlib.image as mgimg
 import matplotlib.animation as anim
 mpl.rcParams['figure.figsize'] = (12,12)
 mpl.rcParams['axes.grid'] = False
-
+#
 import shutil
 import gdown
-
+#
 import sys
-
+#
 import tensorflow as tf 
 from tensorflow.keras import initializers, regularizers, constraints
 from tensorflow.keras import backend as K
@@ -60,23 +60,23 @@ from tensorflow.keras.layers import Input, Dense, Reshape, Flatten, Dropout, Lea
 from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras.optimizers import Adam
 from tensorflow.python.keras.utils import conv_utils
-
+#
 from tensorflow.keras.layers import Lambda
 from tensorflow.keras.layers import add
 from tensorflow.keras.layers import AveragePooling2D
 from tensorflow.keras.initializers import VarianceScaling
 from tensorflow.keras.models import clone_model
 from tensorflow.keras.models import model_from_json
-
+#
 from absl import app
 from absl import flags
 from absl import logging
-
+#
 tf.get_logger().setLevel('ERROR')
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-
+#
 print(f'|===> {tf.__version__}')
-
+#
 if 1: # get base.py from github
     cwd = os.getcwd()
     base_path = os.path.join(cwd, 'base.py')
@@ -96,7 +96,7 @@ if 1: # get base.py from github
 
     else:
         print(f"|===> base in cwd {cwd}")
-
+#
 #
 #   FUNS
 #
@@ -108,7 +108,7 @@ except NameError:
     sys.path.append('../')  # if called from eon, modules are in parallel folder
     sys.path.append('./')  #  if called from dnns, modules are in folder
     from base import *
-
+#
 onutil = Onutil()
 onplot = Onplot()
 onformat = Onformat()
@@ -121,7 +121,7 @@ onrecord = Onrecord()
 ontree = Ontree()
 onvgg = Onvgg()
 onlllyas = Onlllyas()
-
+#
 #
 #   CONTEXT
 #
@@ -177,7 +177,7 @@ def getap():
     for key in hp.keys():
         ap[key] = hp[key]
     return ap
-
+#
 def getxp(cp):
 
     yp = {
@@ -317,7 +317,7 @@ def getxp(cp):
         xp[key] = yp[key]
    
     return xp
-
+#
 #
 #   FUNS VIDEO
 #
@@ -338,8 +338,7 @@ def get_content_frame(frame, args):
     path = os.path.join(args.video_input_dir, frame_name)
     img = onfile.path_to_tnua_with_tf(path, args)
     return img
-
-
+#
 def _get_style_images(content_img, args=None):
   _, ch, cw, cd = content_img.shape
   style_imgs = []
@@ -352,8 +351,7 @@ def _get_style_images(content_img, args=None):
     img = onvgg.vgg_preprocess(img)
     style_imgs.append(img)
   return style_imgs
-
-
+#
 def cv2_frame(cvi, refimg, scale):
     _, ch, cw, cd = refimg.shape #  (1, 256, 256, 3) [[[[-107.68   -90.779  -78.939]
 
@@ -388,8 +386,7 @@ def cv2_frame(cvi, refimg, scale):
     if ssh <= ch and ssw <= cw:
         img = cv2.copyMakeBorder(scaled_img,0,(ch-ssh),0,(cw-ssw),cv2.BORDER_REFLECT)
     return img
-
-
+#
 def get_style_cvis(content_img, args):
     print(f'|---> get_style_cvis  \n \
         content_img: {args.style_imgs_files} \n \
@@ -415,8 +412,7 @@ def get_style_cvis(content_img, args):
         # img = onvgg.vgg_preprocess(img)
         cvis.append(img)
     return cvis
-
-
+#
 def get_input_image(
         init_type= 'content', # {content,style,init,random,prev,prev_warped}
         content_img=None, 
@@ -466,7 +462,7 @@ def get_input_image(
             args
         )        
         return init_img
-
+#
 def get_optimizer(loss):
     print_iterations = 100 # 
     max_iterations = 1000 # args.max_iterations
@@ -484,7 +480,7 @@ def get_optimizer(loss):
         # optimizer = tf.train.AdamOptimizer(learning_rate)
         optimizer = tf.optimizers.Adam(learning_rate)
     return optimizer
-
+#
 def get_noise_image(noise_ratio, content_img, 
         seed = 0
     ):
@@ -492,7 +488,7 @@ def get_noise_image(noise_ratio, content_img,
     noise_img = np.random.uniform(-20., 20., content_img.shape).astype(np.float32)
     img = noise_ratio * noise_img + (1.-noise_ratio) * content_img
     return img
-
+#
 def get_mask_image(mask_img, width, height, 
         content_imgs_dir = './'
     ):
@@ -505,7 +501,7 @@ def get_mask_image(mask_img, width, height,
     mx = np.amax(img)
     img /= mx
     return img
-
+#
 def get_prev_frame(frame, args=None):
     #   get_prev_frame: previously stylized frame    
     video_output_dir = args.video_input_dir # _e_ tbc
@@ -524,7 +520,7 @@ def get_prev_frame(frame, args=None):
     img = onformat.pil_to_dnua(img)
 
     return img
-
+#
 def get_prev_warped_frame(frame, args=None):
 
     video_input_dir = args.video_input_dir
@@ -541,8 +537,8 @@ def get_prev_warped_frame(frame, args=None):
     warped_img = warp_image(prev_img, flow).astype(np.float32)
     img = onvgg.vgg_preprocess(warped_img)
     return img
-
-def get_content_weights(frame, prev_frame, args):
+#
+def get_content_weights(frame, prev_frame, args=None):
     video_input_dir=args.video_input_dir
     content_weights_frmt = args.content_weights_frmt
 
@@ -553,7 +549,7 @@ def get_content_weights(frame, prev_frame, args):
     forward_weights = read_weights_file(forward_path)
     backward_weights = read_weights_file(backward_path)
     return forward_weights #, backward_weights
-
+#
 def warp_image(src, flow):
     _, h, w = flow.shape
     flow_map = np.zeros(flow.shape, dtype=np.float32)
@@ -566,7 +562,7 @@ def warp_image(src, flow):
         src, flow_map[0], flow_map[1], 
         interpolation=cv2.INTER_CUBIC, borderMode=cv2.BORDER_TRANSPARENT)
     return dst
-
+#
 def convert_to_original_colors(content_img, stylized_img, args=None):
     color_convert_type = args.color_convert_type
 
@@ -592,7 +588,7 @@ def convert_to_original_colors(content_img, stylized_img, args=None):
     dst = cv2.cvtColor(merged, inv_cvt_type).astype(np.float32)
     dst = onvgg.vgg_preprocess(dst)
     return dst
-
+#
 #
 #   FUNCS LOG
 #
@@ -670,7 +666,7 @@ def write_image_output(output_img,
     f.write(f'steps_per_epoch: {args.steps_per_epoch}\n')
     f.write(f'print_iterations: {args.print_iterations}\n')
     f.close()
-
+#
 #
 #   FUNCS MODEL
 #
@@ -687,8 +683,7 @@ def read_weights_file(path):
     # expand to 3 channels
     weights = np.dstack([vals.astype(np.float32)] * 3)
     return weights
-
-
+#
 def get_content_weights(frame, prev_frame):
 
     content_weights_frmt = 'reliable_{}_{}.txt' # args.content_weights_frmt
@@ -701,7 +696,7 @@ def get_content_weights(frame, prev_frame):
     forward_weights = read_weights_file(forward_path)
     backward_weights = read_weights_file(backward_path)
     return forward_weights #, backward_weights
-
+#
 def minimize_with_lbfgs(sess, net, optimizer, init_img,
         verbose=True,
     ):
@@ -710,7 +705,7 @@ def minimize_with_lbfgs(sess, net, optimizer, init_img,
     sess.run(init_op)
     sess.run(net['input'].assign(init_img))
     optimizer.minimize(sess)
-
+#
 def minimize_with_adam(sess, net, optimizer, init_img, loss,
         verbose=True,
         max_iterations=1000,
@@ -728,7 +723,7 @@ def minimize_with_adam(sess, net, optimizer, init_img, loss,
             curr_loss = loss.eval()
             print("At iterate {}\tf=  {}".format(iterations, curr_loss))
         iterations += 1
-
+#
 #
 #   NETS
 #
@@ -745,7 +740,7 @@ def content_layer_loss(p, x, args=None):
         K = 1. / 2.
     loss = K * tf.reduce_sum(input_tensor=tf.pow((x - p), 2))
     return loss
-
+#
 def style_layer_loss(a, x):
     if 0:
         print(f'|---> style_layer_loss')      
@@ -756,12 +751,12 @@ def style_layer_loss(a, x):
     G = gram_matrix(x, M, N)
     loss = (1./(4 * N**2 * M**2)) * tf.reduce_sum(input_tensor=tf.pow((G - A), 2))
     return loss
-
+#
 def gram_matrix(x, area, depath):
     F = tf.reshape(x, (area, depath))
     G = tf.matmul(tf.transpose(a=F), F)
     return G
-
+#
 def mask_style_layer(a, x, mask_img, args=None):
     if 1:
         print(f'|---> mask_style_layer {mask_img}')    
@@ -780,7 +775,7 @@ def mask_style_layer(a, x, mask_img, args=None):
     a = tf.multiply(a, mask)
     x = tf.multiply(x, mask)
     return a, x
-
+#
 def sum_masked_style_losses(net, combo, style_imgs, args=None):
     if 0:
         print(f'|---> sum_masked_style_losses')
@@ -804,7 +799,7 @@ def sum_masked_style_losses(net, combo, style_imgs, args=None):
         total_style_loss += (style_loss * img_weight)
     total_style_loss /= float(len(style_imgs))
     return total_style_loss
-
+#
 def sum_style_losses(net, combo, style_imgs, args=None):
     if 0:
         print(f'|---> sum_style_losses')    
@@ -825,7 +820,7 @@ def sum_style_losses(net, combo, style_imgs, args=None):
             total_style_loss += (style_loss * img_weight)
     total_style_loss /= float(len(style_imgs))
     return total_style_loss
-
+#
 def sum_content_losses(net, combo, content_img, args=None):
     if 0:
         print(f'|---> sum_content_losses')     
@@ -841,7 +836,7 @@ def sum_content_losses(net, combo, content_img, args=None):
             content_loss += content_layer_loss(p, x, args) * weight
     content_loss /= float(len(args.content_layers))
     return content_loss
-
+#
 # artistic style transfer for videos' loss functions
 def temporal_loss(x, w, c):
   c = c[np.newaxis,:,:,:]
@@ -849,7 +844,7 @@ def temporal_loss(x, w, c):
   loss = (1. / D) * tf.reduce_sum(input_tensor=c * tf.nn.l2_loss(x - w))
   loss = tf.cast(loss, tf.float32)
   return loss
-
+#
 def get_longterm_weights(i, j, args=None):
   c_sum = 0.
   for k in range(args.prev_frame_indices):
@@ -858,7 +853,7 @@ def get_longterm_weights(i, j, args=None):
   c = get_content_weights(i, i - j, args)
   c_max = tf.maximum(c - c_sum, 0.)
   return c_max
-
+#
 def sum_longterm_temporal_losses(sess, net, frame, input_img, args=None):
   x = sess.run(net['input'].assign(input_img))
   loss = 0.
@@ -873,7 +868,7 @@ def sum_longterm_temporal_losses(sess, net, frame, input_img, args=None):
     c = get_longterm_weights(frame, prev_frame)
     loss += temporal_loss(x, w, c)
   return loss
-
+#
 def sum_shortterm_temporal_losses(sess, net, frame, input_img, args=None):
   x = sess.run(net['input'].assign(input_img))
   prev_frame = frame - 1
@@ -885,7 +880,7 @@ def sum_shortterm_temporal_losses(sess, net, frame, input_img, args=None):
   c = get_content_weights(frame, prev_frame, args) # _e_
   loss = temporal_loss(x, w, c)
   return loss
-
+#
 # utilities and i/o
 def read_image(path):
   # bgr image
@@ -894,11 +889,11 @@ def read_image(path):
   img = img.astype(np.float32)
   img = onvgg.vgg_preprocess(img)
   return img
-
+#
 def write_image(path, img):
   img = onvgg.vgg_deprocess(img)
   cv2.imwrite(path, img)
-
+#
 def preprocess_tensor(inputs):
 
     # Keras works with batches of images. 
@@ -915,7 +910,7 @@ def preprocess_tensor(inputs):
 
     imgpre = tf.convert_to_tensor(imgpre)
     return imgpre
-
+#
 def preprocess_tensors(inputs):
 
     pretensors = []
@@ -924,8 +919,7 @@ def preprocess_tensors(inputs):
         pretensors.append(preitem)
 
     return pretensors
-
-
+#
 def show_effect_a(path):
     from PIL import Image
     image = Image.open(path)
@@ -949,8 +943,7 @@ def show_effect_a(path):
     img = onvgg.vgg_deprocess(img)
     image = Image.fromarray(img)
     image.show() 
-
-
+#
 def read_flow_file(path):
   with open(path, 'rb') as f:
     # 4 bytes header
@@ -964,7 +957,7 @@ def read_flow_file(path):
         flow[0,y,x] = struct.unpack('f', f.read(4))[0]
         flow[1,y,x] = struct.unpack('f', f.read(4))[0]
   return flow
-
+#
 def read_weights_file(path):
   lines = open(path).readlines()
   header = list(map(int, lines[0].split(' ')))
@@ -978,24 +971,24 @@ def read_weights_file(path):
   # expand to 3 channels
   weights = np.dstack([vals.astype(np.float32)] * 3)
   return weights
-
+#
 def normalize(weights):
   denom = sum(weights)
   if denom > 0.:
     return [float(i) / denom for i in weights]
   else: return [0.] * len(weights)
-
+#
 def check_image(img, path):
   if img is None:
     raise OSError(errno.ENOENT, "No such file", path)
-
+#
 # rendering -- where the magic happens
 def compute_loss(combo):
     loss = tf.zeros(shape=())
-
+#
 def clip_0_1(image):
     return tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=1.0)
-
+#
 def build_vgg(
         input_shape = (224, 224, 3),
         model_classes = 1000,
@@ -1061,8 +1054,8 @@ def build_vgg(
         print("|...> did not load model_weights")
 
     return vgg
-
-
+#
+#
 class GAN(tf.keras.models.Model):
 
     def __init__(self, 
@@ -1310,8 +1303,8 @@ class GAN(tf.keras.models.Model):
                     args = args,
                 )
 
-            if 1 and visual:
-                if 0:
+            if visual > 1:
+                if 1:
                     print(f'|---> pil combo_img epoch: {epoch}')
                 onplot.pil_show_nua(self.image)
 
@@ -1324,12 +1317,12 @@ class GAN(tf.keras.models.Model):
 
         end = time.time()
         print("Total time: {:.1f}".format(end-start))
-
+#
 #
 #   CMDS
 #
 #
-
+#
 #
 #   nnimg
 #
@@ -1715,7 +1708,7 @@ def nnimg(args, kwargs):
             cv2.imshow('result img', result)                 
             cv2.waitKey(0) & 0xFF is 27
             cv2.destroyAllWindows()
-
+#
 #
 #   nnani
 #
@@ -1938,7 +1931,7 @@ def nnani(args, kwargs):
             args=args
         )
 
-    print(f'|===> nnani  \n \
+    print(f'|===> nnani video config \n \
         cwd: {os.getcwd()} \n \
         content_filename: {content_filename} \n \
         args.frame_content_frmt: {args.frame_content_frmt} \n \
@@ -1975,7 +1968,7 @@ def nnani(args, kwargs):
 
         args.max_iterations = args.frame_iterations
         for frame in range(args.frame_start, args.frame_end+1):
-            print(f'|===> RENDERING VIDEO FRAME ({args.frame_first_type}): {frame}/{args.frame_end} ----\n')
+            print(f'|...> RENDERING VIDEO FRAME ({args.frame_first_type}): {frame}/{args.frame_end} ----\n')
 
             if frame == args.frame_start:
                 print(f"|...> frame_start input_img type: {type(input_img)}")
@@ -2000,7 +1993,7 @@ def nnani(args, kwargs):
 
             input_img = onimg.tf_resize_nua(input_img, args=args)
 
-            print(f'|===> fit input image \n \
+            print(f'|...> fit input image \n \
                 cwd: {os.getcwd()} \n \
                 input_img shape: {np.shape(input_img)} \n \
             ')
@@ -2020,7 +2013,7 @@ def nnani(args, kwargs):
             video: {args.video} \n \
         ')
 
-        cmd = f'python neural_style.py --video \
+        cmd = f'|...> cmd: python neural_style.py --video \
         --video_input_dir "{args.video_frames_dir}" \
         --style_imgs_dir "{args.style_imgs_dir}" \
         --style_imgs {args.style_imgs_files[0]} \
@@ -2051,7 +2044,7 @@ def nnani(args, kwargs):
 
         #onvid.frames_to_video(args.video_styled_dir, video_output_path, fps)
         onvid.folder_to_gif(args.video_styled_dir, gif_output_path)
-        
+#
 #
 #
 #   MAIN
@@ -2103,7 +2096,7 @@ def main():
         if (subcmd == name):
             print(f'|===> call {name}')
             globals()[name](args, kwargs) # pass args to nn cmd
-
+#
 #
 #
 # python base/base.py nninfo
