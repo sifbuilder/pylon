@@ -128,7 +128,7 @@ onlllyas = Onlllyas()
 #
 def getap():
     cp = {
-        "primecmd": 'nnimg',        
+        "primecmd": 'nnani',        
 
         "MNAME": "stransfer",      
         "AUTHOR": "xueyangfu",      
@@ -186,7 +186,7 @@ def getxp(cp):
         "model_include_top": 0,
         "model_classes": 1000,
 
-        "max_epochs": 800, # 10,
+        "max_epochs": 80, # 800, # 10,
         "steps_per_epoch": 1,
         "print_iterations": 10, #  50
         "max_iterations": 100, # 1000
@@ -610,7 +610,7 @@ def write_image_output(output_img,
     input_img = onformat.nua_to_pil(input_img)
 
     # save result image
-    img_file = f'output_'+str(epoch)+'.png'
+    img_file = f'output_'+str(epoch).zfill(args.zfill)+'.png'
     img_path = os.path.join(args.img_output_dir, img_file)
     onfile.pil_to_file_with_cv(img_path, output_img)
 
@@ -1759,7 +1759,7 @@ def nnani(args, kwargs):
         args.video_frames_dir=os.path.join(args.proj_dir, 'frames')
         args.video_styled_dir=os.path.join(args.proj_dir, 'outstyled')
         args.video_output_dir=os.path.join(args.proj_dir, 'outvid')
-        args.video_input_dir = args.video_output_dir # frames _e_
+        args.video_input_dir = args.video_frames_dir # frames _e_
 
         content_filename=os.path.splitext(os.path.basename(args.video_file))[0]
         content_filename=f"{content_filename}" # eg portu
@@ -1775,13 +1775,15 @@ def nnani(args, kwargs):
             cwd: {os.getcwd()} \n \
             args.video_file: {args.video_file} \n \
             content_filename: {content_filename} \n \
-            args.video_input_path: {args.video_input_path} \n \
             args.proto_dir: {args.proto_dir} \n \
             args.code_dir: {args.code_dir} \n \
-            args.video_frames_dir: {args.video_frames_dir} \n \
-            args.video_styled_dir: {args.video_styled_dir} \n \
-            args.video_output_dir: {args.video_output_dir} \n \
-            args.video_input_dir: {args.video_input_dir} \n \
+            args.video_input_path (input video): {args.video_input_path} \n \
+            args.style_imgs_dir (style imgs dir): {args.style_imgs_dir} \n \
+            args.video_frames_dir (raw frames dir): {args.video_frames_dir} \n \
+            args.video_input_dir (raw frames dir): {args.video_input_dir} \n \
+            args.video_styled_dir (styled frames dir - per frame): {args.video_styled_dir} \n \
+            args.img_output_dir (fit control imgs dir - per epoch): {args.img_output_dir} \n \
+            args.video_output_dir (styled vids dir): {args.video_output_dir} \n \
         ')
 
         os.makedirs(args.results_dir, exist_ok=True)
@@ -1802,6 +1804,7 @@ def nnani(args, kwargs):
             ")
             tofile = tf.keras.utils.get_file(f'{topath}', origin=url, extract=True)
         assert os.path.exists(args.video_input_path), f'input vide {args.video_input_path} does not exist'
+
 
     if 1: # git
         onutil.get_git(args.AUTHOR, args.GITPOD, args.code_dir)
@@ -2004,25 +2007,49 @@ def nnani(args, kwargs):
                 args = args,
             )
 
-    if 0: # render stylized video
+    if 1: # render stylized video
         
         os.chdir(args.code_dir) # _e_ not std
 
-        print(f'|===> nnani render stylized video \n \
+        print(f'|===> nnani gen gif stylized video \n \
             cwd: {os.getcwd()} \n \
             video: {args.video} \n \
         ')
 
         cmd = f'|...> cmd: python neural_style.py --video \
-        --video_input_dir "{args.video_frames_dir}" \
+        --video_input_dir "{args.video_input_dir}" \
         --style_imgs_dir "{args.style_imgs_dir}" \
         --style_imgs {args.style_imgs_files[0]} \
         --frame_end {args.frame_end} \
         --max_size {args.max_size} \
         --verbose'
         print(cmd)
-        
-    if 1: # gen video
+        os.system(cmd)
+
+    if 1: # gen gif video
+
+        fps = 6
+        maxTime = 9 # seconds
+        frameCount = 0
+        time = 0
+        nframes = int( maxTime*fps )
+
+        qsegs = 7
+        qcells = qsegs * qsegs
+        fps=10
+
+        gif_output_path = os.path.join(args.video_output_dir, 'v.gif')
+
+        outvidframes_dir = args.img_output_dir # args.video_frames_dir
+
+        print(f'|===> nnani gen gif stylized video \n \
+            from args.video_styled_dir: {args.video_styled_dir} \n \
+            to video_output_path: {gif_output_path} \n \
+        ')
+
+        onvid.folder_to_gif(args.video_styled_dir, gif_output_path)
+#                
+    if 1: # gen mp4 video
 
         fps = 6
         maxTime = 9 # seconds
@@ -2035,15 +2062,15 @@ def nnani(args, kwargs):
         fps=10
 
         video_output_path = os.path.join(args.video_output_dir, 'v.mp4')
-        gif_output_path = os.path.join(args.video_output_dir, 'v.gif')
 
-        print(f'|===> nnani render stylized video \n \
-            from args.video_frames_dir: {args.video_frames_dir} \n \
+        outvidframes_dir = args.img_output_dir # args.video_frames_dir
+
+        print(f'|===> nnani gen mp4 stylized video \n \
+            from args.video_frames_dir: {args.video_styled_dir} \n \
             to video_output_path: {video_output_path} \n \
         ')
 
-        #onvid.frames_to_video(args.video_styled_dir, video_output_path, fps)
-        onvid.folder_to_gif(args.video_styled_dir, gif_output_path)
+        onvid.frames_to_video(args.video_styled_dir, video_output_path, fps)
 #
 #
 #

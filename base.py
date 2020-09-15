@@ -2175,7 +2175,7 @@ class Onvid:
         paths = Onfile.path_to_paths(fromfolder, patts)
         paths = sorted(paths)
 
-        print(f'---> folder_to_gif \n \
+        print(f'|---> folder_to_gif \n \
             fromfolder: {fromfolder} \n \
             dstpath: {dstpath} \n \
             patts: {patts} \n \
