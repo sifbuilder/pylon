@@ -15,47 +15,41 @@ import requests
 import zipfile
 import random
 import datetime
-        
+#
 from functools import partial
 from importlib import import_module
-
+#
 import logging
 logging.getLogger('tensorflow').setLevel(logging.ERROR)
-
+#
 import numpy as np
 from numpy import *
-
+#
 import math
 from math import floor, log2
 from random import random
 from pylab import *
-
-# import IPython.display as display
 from IPython.core.display import display
-
 import PIL
 from PIL import Image
 PIL.Image.MAX_IMAGE_PIXELS = 933120000
-
+#
 import scipy.ndimage as pyimg
-
 import cv2
 import imageio
 import glob
-
 import matplotlib as mpl
 import matplotlib.pyplot as plt 
 import matplotlib.image as mgimg
 import matplotlib.animation as anim
 mpl.rcParams['figure.figsize'] = (12,12)
 mpl.rcParams['axes.grid'] = False
-
+#
 import shutil
 import gdown
-
+#
 import sys
-
-
+#
 import tensorflow as tf 
 from tensorflow.keras import initializers, regularizers, constraints
 from tensorflow.keras import backend as K
@@ -66,52 +60,72 @@ from tensorflow.keras.layers import Input, Dense, Reshape, Flatten, Dropout, Lea
 from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras.optimizers import Adam
 from tensorflow.python.keras.utils import conv_utils
-
+#
 from tensorflow.keras.layers import Lambda
 from tensorflow.keras.layers import add
 from tensorflow.keras.layers import AveragePooling2D
 from tensorflow.keras.initializers import VarianceScaling
 from tensorflow.keras.models import clone_model
 from tensorflow.keras.models import model_from_json
-
+#
+from absl import app
+from absl import flags
+from absl import logging
+#
 tf.get_logger().setLevel('ERROR')
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+#
+print(f'|===> {tf.__version__}')
+#
+if 1: # get base.py from github
+    cwd = os.getcwd()
+    base_path = os.path.join(cwd, 'base.py')
+    if not os.path.exists(base_path):
 
-print(f'|---> {tf.__version__}')
+        base_file = 'base.py'
+        urlfolder = 'https://raw.githubusercontent.com/sifbuilder/pylon/master/'
+        url = f'{urlfolder}{base_file}'
 
-#   ******************
+        print(f"|===> nnimg: get base file \n \
+            urlfolder: {urlfolder} \n \
+            url: {url} \n \
+            base_path: {base_path} \n \
+        ")
+
+        tofile = tf.keras.utils.get_file(f'{base_path}', origin=url, extract=True)
+
+    else:
+        print(f"|===> base in cwd {cwd}")
+#
+#
 #   FUNS
 #
-#   ******************
-
+#
+# check if base.Onpyon is defined
 try:
-    # check if base.Onpyon is defined
     var = Onpyon()
-
 except NameError:
-    # Onpyon not defined
-
     sys.path.append('../')  # if called from eon, modules are in parallel folder
     sys.path.append('./')  #  if called from dnns, modules are in folder
-
     from base import *
-
+#
 onutil = Onutil()
 onplot = Onplot()
 onformat = Onformat()
 onfile = Onfile()
 onvid = Onvid()
+onimg = Onimg()
 ondata = Ondata()
 onset = Onset()
 onrecord = Onrecord()
 ontree = Ontree()
+onvgg = Onvgg()
 onlllyas = Onlllyas()
-
-#   *******************
+#
+#
 #   CONTEXT
 #
-#   *******************
-
+#
 def getap():
     cp = {
         "primecmd": 'nndanboo', # 'nncrys', #  
@@ -199,8 +213,7 @@ def getap():
     for key in hp.keys():
         ap[key] = hp[key]
     return ap
-
-
+#
 def getxp(cp):
 
     yp={}
@@ -216,37 +229,33 @@ def getxp(cp):
         xp[key] = yp[key]
    
     return xp
-
-
-#   ******************
+#
+#
 #   FUNS SEGMENT
 #
 #   https://github.com/lllyasviel/DanbooRegion/blob/master/code/segment.py
-
+#
+#
 def go_vector(x):
     return x[None, :, :, :]
-
-
+#
 def go_flipped_vector(x):
     a = go_vector(x)
     b = np.fliplr(go_vector(np.fliplr(x))) # numpy.fliplr(m: marray_like) -> fndarray
     c = np.flipud(go_vector(np.flipud(x)))
     d = np.flipud(np.fliplr(go_vector(np.flipud(np.fliplr(x)))))
     return (a + b + c + d) / 4.0
-
-
+#
 def go_transposed_vector(x):
     a = go_flipped_vector(x)
     b = np.transpose(go_flipped_vector(np.transpose(x, [1, 0, 2])), [1, 0, 2])
     return (a + b) / 2.0
-
-
+#
 def get_fill(image):
     labeled_array, num_features = label(image / 255)
     filled_area = onlllyas.find_all(labeled_array)
     return filled_area
-
-
+#
 def up_fill(fills, cur_fill_map):
     new_fillmap = cur_fill_map.copy()
     padded_fillmap = np.pad(cur_fill_map, [[1, 1], [1, 1]], 'constant', constant_values=0)
@@ -264,13 +273,11 @@ def up_fill(fills, cur_fill_map):
             max_id += 1
             new_fillmap[item] = max_id
     return new_fillmap
-
-
-#   ******************
+#
+#
 #   NETS
 #
-#   ******************
-
+#
 class GAN(object):
 
     def __init__(self, 
@@ -312,8 +319,6 @@ class GAN(object):
             discriminator=self.discriminator,
             step=self.step
         )
-
-
 
         self.restore_checkpoint()
 
@@ -378,7 +383,6 @@ class GAN(object):
         x = last(x)
 
         return tf.keras.Model(inputs=inputs, outputs=x)
-
 
     # Discriminator
     #     The Discriminator is a PatchGAN.
@@ -471,7 +475,6 @@ class GAN(object):
             tf.summary.scalar('gen_l1_loss', gen_l1_loss, step=epoch)
             tf.summary.scalar('disc_loss', disc_loss, step=epoch)    
 
-
     def fit(self, train_ds, test_ds=None, args = None, ):
 
         max_epochs = args.max_epochs
@@ -520,7 +523,6 @@ class GAN(object):
 
         file_prefix = os.path.join(self.ckpt_dir, self.ckpt_prefix)
         self.checkpoint.save(file_prefix = file_prefix)
-
 
     def generate_images(self, test_dataset, epoch, args=None ):
 
@@ -595,24 +597,23 @@ class GAN(object):
         else:
             print(f'|...> model.restore_checkpoint checkpoint not found')
             return None
-
-#   ******************
+#
+#
 #   FUNS PRJ
 #
-#   ******************
-
+#
 def path_to_pair(path, height=None, width=None, exotor=1.0):
     print(f"|---> path_to_pair 11: {path}")	
     imgs = path_to_decoded(path)
     imgs = imgs_process(imgs, height, width, exotor)
     return imgs
-
+#
 def paths_to_pair(paths, height=None, width=None, exotor=1.0):
     print(f'|---> paths_to_pair (22): {paths}')
     imgs = paths_to_decoded(paths)
     imgs = imgs_process(imgs, height, width, exotor)
     return imgs
-
+#
 def path_to_decoded(path, rate=0.5):
     print(f'|---> ********************** path_to_decoded: {path}')
 
@@ -633,7 +634,7 @@ def path_to_decoded(path, rate=0.5):
     imgs.append(img2)
 
     return imgs
-
+#
 def paths_to_decoded(paths, rate=2):
     print(f'|---> paths_to_decoded: {paths}')
 
@@ -646,13 +647,13 @@ def paths_to_decoded(paths, rate=2):
         img = tf.cast(img, tf.float32)
         imgs.append(img)
     return imgs
-
+#
 # Random jittering:
 # Resize an image to bigger height and width
 # Randomly crop to the target size
 # Randomly flip the image horizontally
 # the image is resized to 286 x 286 and then randomly cropped to 256 x 256
-
+#
 def probe_dataset_11(dataset, dst_dir):
     print(f'|---> probe_dataset_11')			
 
@@ -671,8 +672,7 @@ def probe_dataset_11(dataset, dst_dir):
         plt.savefig(os.path.join(dst_dir, f'{i}_example_target.png'))
 
         i += 1
-
-
+#
 def path_to_dataset_from_src(path, patt, 
         batch_size=None, height=None, width=None, buffer_size=None):
 
@@ -691,8 +691,7 @@ def path_to_dataset_from_src(path, patt,
             height=height, width=width, buffer_size=buffer_size, batch_size=batch_size)
 
     return dataset
-
-
+#
 def paths_to_dataset(pths, patts, 
         batch_size=None, height=None, width=None, buffer_size=None,
         exotor=1.2):
@@ -740,8 +739,7 @@ def paths_to_dataset(pths, patts,
                 print(f'|... path_to_dataset batch {n}: {np.shape(inp)} {np.shape(re)}')
 
     return dataset
-
-
+#
 def path_process(path, height=256, width=256, exotor=1.0, flip=0):
     print(f'|---> path_process')
 
@@ -751,8 +749,7 @@ def path_process(path, height=256, width=256, exotor=1.0, flip=0):
     img = img_process(img, height, width, exotor, flip)
 
     return img
-
-
+#
 def img_process(img, height=256, width=256, exotor=1.0, flip=0):
     print(f'|---> img_process')
 
@@ -763,8 +760,7 @@ def img_process(img, height=256, width=256, exotor=1.0, flip=0):
     img = onformat.rgb_to_nba(img)  
 
     return img
-
-
+#
 def imgs_process(imgs, height=256, width=256, exotor=1.0, flip=0):
     print(f'|---> imgs_process')
 
@@ -775,13 +771,13 @@ def imgs_process(imgs, height=256, width=256, exotor=1.0, flip=0):
     imgs = onformat.rgbs_to_nbas(imgs)
 
     return imgs
-
+#
 def tnua_resize(img, height, width, method=tf.image.ResizeMethod.NEAREST_NEIGHBOR):
     print(f'|---> tnua_resize {np.shape(img)} ')			
     img = tf.image.resize(img, [height, width],
         method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
     return img
-
+#
 def imgs_resize_with_tf(imgs, height, width, method=tf.image.ResizeMethod.AREA):
     print(f'|---> imgs_resize_with_tf: {np.shape(imgs)}')	
     res = []
@@ -790,7 +786,7 @@ def imgs_resize_with_tf(imgs, height, width, method=tf.image.ResizeMethod.AREA):
         img = tnua_resize(img, height, width, method)
         res.append(img)		
     return res
-
+#
 def img_crop(img, height, width):
     imgs = [img]
     print(f'|---> img_crop: {np.shape(imgs)}')	
@@ -799,7 +795,7 @@ def img_crop(img, height, width):
     cropped_image = tf.image.random_crop(
         stacked_image, size=[b, height, width, 3])
     return cropped_image[0] # _e_
-
+#
 def img_crop_random(img, height, width):
     shape = np.shape(img)
     print(f'|---> img_crop_random {shape}, {height}, {width}')
@@ -807,7 +803,7 @@ def img_crop_random(img, height, width):
     img = tf.image.random_crop(img, size=[height, width, 3])
     print(f'|... img_crop_random {np.shape(img)}, {height}, {width}')	
     return img
-
+#
 def imgs_crop_random(imgs, height, width):
     print(f'|---> imgs_crop_random: {np.shape(imgs)}')	
     stacked_images = tf.stack(imgs, axis=0)
@@ -817,12 +813,12 @@ def imgs_crop_random(imgs, height, width):
 
     res = cropped_images[0], cropped_images[1]  # _e_
     return res
-
+#
 def img_random_flip(img):
     imgs = [img]
     imgs = imgs_random_flip(imgs)
     return imgs[0]
-
+#
 def imgs_random_flip(imgs):
     print(f'|---> imgs_random_flip')	
     _imgs = []
@@ -831,13 +827,12 @@ def imgs_random_flip(imgs):
             item = tf.image.flip_left_right(item)
             _imgs.append(item)
     return imgs
-
+#
 def img_jitter_random(img, height, width):
     print(f'|---> img_jitter_random {np.shape(img)}')		
     img = img_crop_random(img, height, width)
     return img
-
-# ----
+#
 # https://github.com/phillipi/pix2pix
 def load_predefined_image_data_by_task_name(task_name,
                                             predefined_task_name_list=None,):
@@ -854,7 +849,7 @@ def load_predefined_image_data_by_task_name(task_name,
     else:
         raise ValueError(f"Predefined tasks do not include this {task_name} task!")
     return PATH
-
+#
 def download_and_processing_pix2pix_dataset(data_dir_or_predefined_task_name=None,
                                             predefined_task_name_list=None,
                                             args=None):
@@ -871,14 +866,10 @@ def download_and_processing_pix2pix_dataset(data_dir_or_predefined_task_name=Non
         print("|... prepare data from data_dir")
     else:
         raise ValueError("Task_name error and data_dir does not exist!")
-
-
-#   ******************
+#
+#
 #   CMDS
 #
-#   ******************
-
-#   ******************
 #   nnzip
 #   
 def nnzip(args, kwargs):
@@ -931,7 +922,6 @@ def nnzip(args, kwargs):
         os.makedirs(args.logs_dir, exist_ok=True)
         os.makedirs(args.tmp_dir, exist_ok=True)
 
-
     if args.verbose: print(f"|---> tree: {args.PROJECT}:   \n \
         args.PROJECT:    	  {args.PROJECT} \n \
         args.DATASET:    	  {args.DATASET} \n \
@@ -946,7 +936,6 @@ def nnzip(args, kwargs):
         args.verbose:         {args.verbose}, \n \
         args.visual:          {args.visual}, \n \
     ")
-
 
     if 1: # config
         args.height = args.img_height
@@ -973,7 +962,6 @@ def nnzip(args, kwargs):
         args.input_shape: 		{args.input_shape} \n \
         args.patts:     		{args.patts}, \n \
     ")
-
 
     if 1: # remote data to local
 
@@ -1003,7 +991,6 @@ def nnzip(args, kwargs):
         zexts = ['.tar.gz', '.tar', '.tgz', '.zip']
 
         print(f'|... chech that remote is path')
-
 
         local_tar_path = None
         if 1:
@@ -1042,7 +1029,6 @@ def nnzip(args, kwargs):
             from shutil import copyfile
             copyfile(remote_tar_path, local_tar_path)
 
-
         if local_tar_path:
             print("|... unzip to data")
             tree_root = None
@@ -1053,13 +1039,11 @@ def nnzip(args, kwargs):
         # check data folder
         untarfolder = os.path.join(args.data_dir, dat)
         print(f'|... untar folder {untarfolder} exists" {os.path.exists(untarfolder)}')
-
-
-#   ******************
+#
+#
 #   nndanboo
 #
 def nndanboo(args, kwargs):
-
     
     if onutil.incolab():
         args = onutil.pargs(vars(args))
@@ -1096,7 +1080,6 @@ def nndanboo(args, kwargs):
         args.results_dir = os.path.join(args.proj_dir, 'results') # in project dir
         args.code_dir = os.path.join(args.proj_dir, 'code') # inside project dir
 
-
         args.data_train_dir = os.path.join(args.data_dir, 'train')
         args.data_test_dir = os.path.join(args.data_dir, 'test')
         args.data_val_dir = os.path.join(args.data_dir, 'val')
@@ -1116,7 +1099,6 @@ def nndanboo(args, kwargs):
         args.data_test_pict_dir = os.path.join(args.data_test_dir, 'pict')
         args.data_test_draw_dir = os.path.join(args.data_test_dir, 'draw')
         args.data_test_predict_dir = os.path.join(args.data_test_dir, 'predict')
-
 
         print(f"|---> nndanboo tree:  \n \
         cwd: {os.getcwd()} \n \
@@ -1138,7 +1120,6 @@ def nndanboo(args, kwargs):
         args.data_val_dir: {args.data_val_dir}, {onfile.qfiles(args.data_val_dir, '*.png')}\n \
         ")
 
-
         args.dataorg_dir = os.path.join(args.dataorg_dir, '')
         if not os.path.exists(args.dataorg_dir):
             print(f'org data missing \n \
@@ -1155,7 +1136,6 @@ def nndanboo(args, kwargs):
             ')
             exit()
 
-
         os.makedirs(args.proj_dir, exist_ok=True) 
         os.makedirs(args.code_dir, exist_ok=True) 
         os.makedirs(args.results_dir, exist_ok=True) 
@@ -1167,7 +1147,6 @@ def nndanboo(args, kwargs):
         os.makedirs(args.data_test_pict_dir, exist_ok=True) 
         os.makedirs(args.data_test_draw_dir, exist_ok=True) 
         os.makedirs(args.data_test_predict_dir, exist_ok=True) 
-
 
     if 1: # config
 
@@ -1197,7 +1176,6 @@ def nndanboo(args, kwargs):
         args.input_shape: {args.input_shape}, \n \
     ")
 
-
     if 1: # git
         onutil.get_git(args.AUTHOR, args.GITPOD, args.code_dir)
 
@@ -1215,7 +1193,6 @@ def nndanboo(args, kwargs):
             region_map = cv2.imread('./X.region.png')
             cv2.imshow('vis', onlllyas.vis(region_map, color_map))
             cv2.waitKey(0)
-
 
     if 1: # org to _train_ data 
 
@@ -1252,7 +1229,6 @@ def nndanboo(args, kwargs):
         else:
             print(f'|... train no processFolder !!!!. files already there ')
 
-
     if 1: # org to _test_ data 
 
         print(f'|---> nndanregion org test to data q: \n \
@@ -1284,8 +1260,6 @@ def nndanboo(args, kwargs):
         else:
             print(f'|... test no processFolder !!!!. files already there ')
 
-
-
     if 0: # probe images to skeletons
 
         basename = 'region_test.png'
@@ -1308,7 +1282,6 @@ def nndanboo(args, kwargs):
             region_map = cv2.imread(imgpath)
             cv2.imshow(basename, onlllyas.get_skeleton(region_map, filterstrength=1.0))
             cv2.waitKey(0)
-
 
     if 1: # (train) data to skeletons
 
@@ -1341,7 +1314,6 @@ def nndanboo(args, kwargs):
             qoutfiles = onfile.qfiles(_todir, patt)
             outprefixes = [os.path.basename(item).split('.')[0] for item in onfile.path_to_paths(_todir)]
 
-            
             if qinfiles > qoutfiles: # files in outdir with loutpatt
                 print(f'|...>  raw to data ({qinfiles}) to ({qoutfiles})')
                 for i,path in enumerate(train_paths):
@@ -1369,8 +1341,6 @@ def nndanboo(args, kwargs):
             else:
                 print(f'|... no process. out files {qoutfiles} in')
 
-    
-
     if 0: # skeletom to regions show
 
         basename = 'danskel.jpg'
@@ -1391,8 +1361,6 @@ def nndanboo(args, kwargs):
         else:
             cv2.imshow(basename, img)
             cv2.waitKey(0)
-
-
 
     if 1: # model
 
@@ -1416,7 +1384,6 @@ def nndanboo(args, kwargs):
             output_shape = args.input_shape,
         )
     
-
     # 3. segment
     
     if 1:	# python segment.py ./emilia.jpg
@@ -1439,7 +1406,6 @@ def nndanboo(args, kwargs):
         img = onlllyas.min_resize(img, 512)
         if 0: onplot.cv_img(img, title=f'regions {basename}')
 
- 
         #raw_img = cv2.imread(path, cv2.IMREAD_GRAYSCALE) # go_srcnn
         raw_img = cv2.imread(path) # go_srcnn
         raw_img = onlllyas.min_resize(raw_img, 512)
@@ -1457,12 +1423,10 @@ def nndanboo(args, kwargs):
         #img = model.generator(raw_img, training=True)       
         #img = img[:, pads * 2:-pads * 2, pads * 2:-pads * 2, :][:, 1:-1, 1:-1, :] * 255.0
 
-
         img = img[np.newaxis,:,:,:]
         img = model.generator(img, training=True)
         img_rgb = onformat.nnba_to_rgb(img)
         if 1: onplot.cv_img(img_rgb, title=f'gen rgb img')            
-
 
         img_2048 = onlllyas.min_resize(raw_img, 2048)        
         if 0: onplot.cv_img(img_2048, title=f'img_2048')
@@ -1470,7 +1434,6 @@ def nndanboo(args, kwargs):
         transposed = onlllyas.go_transposed_vector(onlllyas.mk_resize(raw_img, 64))
         height = onlllyas.d_resize(transposed, img_2048.shape) * 255.0
         #height = onlllyas.d_resize(go_transposed_vector(onlllyas.mk_resize(raw_img, 64)), img_2048.shape) * 255.0
-
 
         final_height = height.copy()
 
@@ -1481,7 +1444,6 @@ def nndanboo(args, kwargs):
         marker = height.copy() # (2048, 2048, 3)
         marker[marker > 135] = 255
         marker[marker < 255] = 0
-
 
         marker = cv2.cvtColor(marker, cv2.COLOR_BGR2GRAY) # marker gray
         fills = onlllyas.get_fill(marker / 255)
@@ -1521,7 +1483,6 @@ def nndanboo(args, kwargs):
         region = regions.clip(0, 255).astype(np.uint8)
         flatten = result.clip(0, 255).astype(np.uint8)
 
-
         skeleton_path = os.path.join(args.results_dir, 'current_skeleton.png')
         region_path = os.path.join(args.results_dir, 'current_region.png')
         flatten_path = os.path.join(args.results_dir, 'current_flatten.png')
@@ -1538,13 +1499,11 @@ def nndanboo(args, kwargs):
         cv2.imwrite(region_path, region)
         cv2.imwrite(flatten_path, flatten)
 
-
     # 3b. predict test images
     
     if 0:	# 
         
         paths = Onfile.folder_to_paths(args.data_test_pict_dir)
-
 
         idx = 0
         for n, path in enumerate(paths):
@@ -1575,7 +1534,6 @@ def nndanboo(args, kwargs):
             print(f'|... save {save_image_path}')            
             onfile.rgbs_to_file([img], scale=1, rows=1, save_path=save_image_path)
 
-  
     if 0: # train
 
         if 1: #  data => dataset (train) # paths_to_dataset_22
@@ -1597,7 +1555,6 @@ def nndanboo(args, kwargs):
                 height=args.height, width=args.width, 
                 buffer_size=args.buffer_size, batch_size=args.batch_size)
 
-
         if 1: #  data => dataset (test) --- # paths_to_dataset_22
 
             print(f'|---> nndanregion datasets:  \n \
@@ -1617,7 +1574,6 @@ def nndanboo(args, kwargs):
                 height=args.height, width=args.width, 
                 buffer_size=args.buffer_size, batch_size=1) # 1 per batch in test dataset _e_
 
-
         if 0: # probe train dataset
 
             print(f'|===> probe nndanregion train dataset')
@@ -1631,16 +1587,14 @@ def nndanboo(args, kwargs):
                 display_list = [img1, img2]
                 onplot.pil_show_rgbs(display_list, scale=1, rows=1) 
 
-
         print(f'|===> training loop:')
         model.fit(train_dataset, test_dataset, args)     # , summary_writer
 
-
     print('|===> end danboo')
-
-#   ******************
+#
+#
 #   nnart
-#   ******************
+#
 def nnart(args, kwargs):
 # https://github.com/memo/webcam-pix2pix-tensorflow
 
@@ -1683,7 +1637,6 @@ def nnart(args, kwargs):
         os.makedirs(args.dataset_test_B_dir, exist_ok=True) 
         os.makedirs(args.dataset_test_A_dir, exist_ok=True) 
         os.makedirs(args.records_dir, exist_ok=True)
-
 
     if args.verbose: print(f"|---> nnart tree: {args.PROJECT}:  \n \
     cwd: {os.getcwd()} \n \
@@ -1769,7 +1722,6 @@ def nnart(args, kwargs):
 
         assert len(test_paths) >= 0, f'test files may be missing'
 
-
     if 0: # raw to formed data (dataorg_dir => data_train_dir, data_test_dir)
         for i,path in enumerate(train_paths):
             rootid = int(onutil.get_rootid(path))
@@ -1831,9 +1783,8 @@ def nnart(args, kwargs):
         gan.fit(train_dataset, test_dataset, args)     # , summary_writer
 
     print(f'|===> end nnart')
-
-
-#   ******************
+#
+#
 #   nncrys - 22
 #   
 def nncrys(args, kwargs):
@@ -1869,7 +1820,6 @@ def nncrys(args, kwargs):
         os.makedirs(args.data_train_dir, exist_ok=True) 
         os.makedirs(args.data_test_dir, exist_ok=True) 
 
-
         os.makedirs(args.dataset_train_B_dir, exist_ok=True) 
         os.makedirs(args.dataset_train_A_dir, exist_ok=True) 
         os.makedirs(args.dataset_test_B_dir, exist_ok=True) 
@@ -1880,7 +1830,6 @@ def nncrys(args, kwargs):
         os.makedirs(args.tmp_dir, exist_ok=True)
         os.makedirs(args.records_dir, exist_ok=True)
         os.makedirs(args.results_dir, exist_ok=True)
-
 
     if args.verbose: print(f"|---> nncrys tree: {args.PROJECT}:  \n \
     cwd: {os.getcwd()} \n \
@@ -1901,7 +1850,6 @@ def nncrys(args, kwargs):
     args.records_dir:    {args.records_dir} :-: {onfile.qfiles(args.records_dir, '*')} files \n \
     args.models_dir:     {args.models_dir} :-: {onfile.qfiles(args.models_dir, '*.index')} snaps \n \
     ")
-
 
     if 1: # config
 
@@ -1927,12 +1875,10 @@ def nncrys(args, kwargs):
         args.input_shape:    {args.input_shape} \n \
     ')
 
-
     if 0: # clear tree
 
         print(f"clear tree at {args.proj_dir}")
         onfile.clearfolder(args.proj_dir, inkey=args.PROJECT)
-
 
     if 0: # make gif out of results: all generatd imgs with patterns
 
@@ -1949,7 +1895,6 @@ def nncrys(args, kwargs):
         ")
         onvid.folder_to_gif(srcdir, dstpath, patts=imgpatts)
 
-
     if 1: # 	model
 
         print(f"|===> get model from {args.models_dir} \n ")		
@@ -1963,7 +1908,6 @@ def nncrys(args, kwargs):
             input_shape = args.input_shape,
             output_shape = args.input_shape,
         )
-
 
     if 1: # raw images to data (dataorg_dir => data_train_dir, data_test_dir)
 
@@ -2024,7 +1968,6 @@ def nncrys(args, kwargs):
             args.max_size:{args.max_size} \n \
         ")
 
-
         # dataset to train data
 
         args.input_folder = args.data_train_dir
@@ -2071,7 +2014,6 @@ def nncrys(args, kwargs):
             onset.processFolder(args) # copy reals to test
         else:
             print(f"|... nothing copied. {args.output_folder} not empty")
-
 
     if 1: # canny to dataset A ((train, test)B => (train, test)A)
 
@@ -2129,7 +2071,6 @@ def nncrys(args, kwargs):
         else:
             print(f"|---> nothing copied. {args.output_folder} not empty")
 
-
         # data to dataset test B
 
         args.input_folder = args.dataset_test_B_dir
@@ -2161,7 +2102,6 @@ def nncrys(args, kwargs):
         else:
             print(f"|---> nothing copied. {args.output_folder} not empty")
 
-
     if 1: #  data_train_dir => tf datasets 22
 
         print(f"|===> data to datasets 22")
@@ -2191,7 +2131,6 @@ def nncrys(args, kwargs):
             args.patts, 
             height=args.height, width=args.width, buffer_size=args.buffer_size, batch_size=args.batch_size)
 
-
     if 0: # probe train dataset
 
         print(f"|===> probe train dataset")
@@ -2208,8 +2147,6 @@ def nncrys(args, kwargs):
             display_list = [img1, img2]
             onplot.pil_show_rgbs(display_list, scale=1, rows=1) 
 
-
-
     if 0: #   	data => tfrecords
 
         print(f"|===> data to tfrecords   \n \
@@ -2220,7 +2157,6 @@ def nncrys(args, kwargs):
         onrecord.folder_to_tfrecords(
             args.dataset_train_A_dir, 
             args.records_dir)
-
 
     if 1: # walk ckpt models
 
@@ -2253,10 +2189,8 @@ def nncrys(args, kwargs):
         ckptidxs = sorted(ckptidxs)
         qckptidxs = len(ckptidxs)
 
-
         mod = int(qckptidxs/maxitems)
         print(f'|===> walk ckpt models with mod {mod}')
-
 
         ckptidxs=[]
         for i,idx in enumerate(range(qckptidxs-1)):
@@ -2280,7 +2214,6 @@ def nncrys(args, kwargs):
             if 0: # img waits
                 onplot.plot_iter_grid(model, test_dataset, 1, 3, figsize = (6.4, 6.3), do=['save']) # do=['plot', 'save']
 
-
     if 1: # ckpt models to gif
         fromfolder = args.results_dir
         dstpath = os.path.join(args.results_dir, 'out.gif')
@@ -2295,7 +2228,6 @@ def nncrys(args, kwargs):
         onvid.folder_to_gif(fromfolder, dstpath, patts)
         #_folder_to_gif(fromfolder, dstpath, patts)
 
-
     if 0: #  	colab
 
         if onutil.incolab():
@@ -2305,12 +2237,10 @@ def nncrys(args, kwargs):
         else:
             print(f"|---> launch a separate tensorboard process to monitor logs with colab")
 
-
     if 0: # walk test_dataset
 
         print(f"|===> walk the test_dataset")
         onplot.plot_iter_grid(model, test_dataset, 3, 3, figsize = (6.4, 6.3), do=['plot', 'save'])
-
 
     if 0: # show train first
 
@@ -2348,7 +2278,6 @@ def nncrys(args, kwargs):
             ]
             onplot.pil_show_rgbs(display_list, scale=1, rows=1)   
 
-
     if 0: # train
 
         print(f"|===> train loop")
@@ -2356,8 +2285,8 @@ def nncrys(args, kwargs):
         model.fit(train_dataset, test_dataset, args)
 
     print(f'|===> end nncrys')
-
-#   ******************
+#
+#
 #   nnleonardo - 22
 #   
 def nnleonardo(args, kwargs):
@@ -2424,7 +2353,6 @@ def nnleonardo(args, kwargs):
         args.visual:          {args.visual}, \n \
     ")
 
-
     if 1: # config
         args.height = args.img_height
         args.width = args.img_width
@@ -2478,7 +2406,6 @@ def nnleonardo(args, kwargs):
         print(f"|---> plot re, inp ...")
         onplot.pil_show_rgbs([re, inp])
 
-
     if 1: #  dataorg raw => data train 
 
         print(f"|---> raw to data")
@@ -2503,12 +2430,10 @@ def nnleonardo(args, kwargs):
             qoutfiles : {qoutfiles}, \n \
         ")
 
-
         if  qinfiles > qoutfiles:
             onset.processFolder(args) # copy inputs to train
         else:
             print(f'|... no processFolder !!!!. files already there ')
-
 
         args.filepatt = f'.*re.{args.file_extension}'
         args.output_folder = args.data_train_B_dir
@@ -2526,7 +2451,6 @@ def nnleonardo(args, kwargs):
             onset.processFolder(args) # copy reals to train
         else:
             print(f'|... no processFolder !!!!. files already there ')
-
 
     if 1: #  dataorg_test_dir raw => data_test_dir (A/B) data
         args.keep_folder=True    
@@ -2555,7 +2479,6 @@ def nnleonardo(args, kwargs):
         args.filepatt = f'.*re.{args.file_extension}'
         args.output_folder = args.data_test_B_dir
 
-
         args.filepatt = f'.*re.{args.file_extension}'
         args.output_folder = args.data_train_B_dir
 
@@ -2568,7 +2491,6 @@ def nnleonardo(args, kwargs):
             onset.processFolder(args) # copy reals to test
         else:
             print(f'|... no processFolder !!!!. files there ')
-
 
     if 1: #  data to dataset (A/B) data
         print(f"|---> data to dataset")
@@ -2638,7 +2560,6 @@ def nnleonardo(args, kwargs):
         args.filepatt = f'.*re.{args.file_extension}'
         args.output_folder = args.dataset_test_B_dir
 
-
         qinfiles = onfile.qfiles(args.input_folder, f'*re.{args.file_extension}')
         qoutfiles = onfile.qfiles(args.output_folder)
 
@@ -2670,7 +2591,6 @@ def nnleonardo(args, kwargs):
             args.patts, 
             height=args.height, width=args.width, buffer_size=args.buffer_size, batch_size=args.batch_size)
         
-
     if args.visual > 1: # probe train dataset
 
         print(f"|---> probe dataset")
@@ -2688,7 +2608,6 @@ def nnleonardo(args, kwargs):
                 img2,
             ]
             onplot.pil_show_rgbs(display_list, scale=1, rows=1) 
-
 
     if 1: # model
         print("|===> model")
@@ -2737,8 +2656,6 @@ def nnleonardo(args, kwargs):
         print("|... pil show rgbs")
         onplot.pil_show_rgbs(display_list, scale=1, rows=1)     
 
-
-
     if args.visual:  # demo dataset
 
         print("|===> probe train dataset prediction")
@@ -2755,7 +2672,6 @@ def nnleonardo(args, kwargs):
             display_list = [ img1, img2,  img3 ]
             onplot.pil_show_rgbs(display_list, scale=1, rows=1) 
                     
-
         if test_dataset:
             print("|---> probe test dataset prediction")
             for test_input, test_target in test_dataset.take(1):
@@ -2768,16 +2684,14 @@ def nnleonardo(args, kwargs):
             display_list = [ img1, img2,  img3 ]
             onplot.pil_show_rgbs(display_list, scale=1, rows=1)        
     
-
-
     if 1: # train
 
         print("|===> training loop")
         gan.fit(train_dataset, test_dataset, args)     # , summary_writer
 
     print(f'|===> end nnleonardo')
-
-#   ******************
+#
+#
 #   nnfacades - 11
 #   
 def nnfacades(args, kwargs):
@@ -2870,7 +2784,6 @@ def nnfacades(args, kwargs):
         test_dataset = paths_to_dataset(path_test, '*.jpg',
             height=args.height,width=args.width,buffer_size=args.buffer_size,batch_size=args.batch_size)
 
-
     if 1: # model
         print(f"|===> model")
         gan = GAN(
@@ -2889,7 +2802,6 @@ def nnfacades(args, kwargs):
             os.system(f"tensorboard -- logdir {args.logs_dir}")
         else:
             print("launch a separate tensorboard process to monitor logs with colab")
-
 
     if args.visual: # 
 
@@ -2921,15 +2833,14 @@ def nnfacades(args, kwargs):
             display_list = [img1, img2, img3]
             onplot.pil_show_rgbs(display_list, scale=1, rows=1)        
 
-
     if 1: # train
 
         print(f"|===> training loop")
         gan.fit(train_dataset, test_dataset, args)     # , summary_writer
 
     print(f'|===> end nnfacades')
-
-#   ******************
+#
+#
 #   nngoya
 #   
 def nngoya(args, kwargs):
@@ -3008,7 +2919,10 @@ def nngoya(args, kwargs):
         onplot.pil_show_rgbs(display_list, scale=1, rows=1)  
 
     print(f'|---> end nngoya')
-
+#
+#
+#   nngoya
+#   
 def nninfo(args, kwargs):
 
     args = onutil.pargs(vars(args))
@@ -3031,16 +2945,15 @@ def nninfo(args, kwargs):
         title=DanbooRegion: An Illustration Region Dataset, \n \
         year=2020, \n \
     ")
-
-
-#   ******************
+#
+#
 #
 #   MAIN
 #
-#   ******************
+#
 def main():
 
-    parser = argparse.ArgumentParser(description='''Run 'python %(prog)s <subcommand> --help' for subcommand help.''')
+    parser = argparse.ArgumentParser(description='Run "python %(prog)s <subcommand> --help" for subcommand help.')
 
     onutil.dodrive()
     ap = getap()
@@ -3082,13 +2995,12 @@ def main():
     
     for name in cmds:
         if (subcmd == name):
-            print("|---> call %s" %name)
+            print(f'|===> call {name}')
             globals()[name](args, kwargs) # pass args to nn cmd
-
-# ---------------------------------------------------------------
+#
+#
+#
 # python base/base.py nninfo
 if __name__ == "__main__":
-    print("|--->", __name__)
+    print("|===>", __name__)
     main()
-
-#---------------------------------------------------------------
