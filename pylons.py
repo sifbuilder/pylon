@@ -293,47 +293,81 @@ def nnjoin(args, kwargs):
         tmpfilename = f'___{basename}.{tmpextension}' # _ prefix
         tmpfile_path = os.path.join(args.pyons_dir, tmpfilename)
 
-
         interfilename = f'___{basename}.{newextension}' # _ prefix
         interfile_path = os.path.join(args.pyons_dir, interfilename)
 
-
-
         newfilename = f'{basename}.{newextension}' # _ prefix
         newfile_path = os.path.join(args.pyons_dir, newfilename)
-
-
-        
-        print(f"|===> pylons: \n \
-            from path: {base_path} + {path}  \n \
+     
+        print(f"|===> pylons: {path}\n \
             to path: {newfile_path} \n \
         ")        
 
-
         alllines = ''
-        with open(tmpfile_path, 'w') as outfile:
 
-            #with open(base_path) as infile:
-            #    for line in infile:
-            #        #outfile.write(line)
-            #        alllines += line
 
-            with open(path) as infile:
+        if 0: # do not add base
+            with open(base_path) as infile:
                 for line in infile:
-                    #outfile.write(line)
                     alllines += line
 
-            outfile.write(alllines)
+        if 1: # add py script
+            with open(path) as infile:
+                for line in infile:
+                    alllines += line
 
-        cmd = f'p2j {tmpfile_path}' # tmpfile_path => interfile_path
-        print(f"|---> cmd {cmd}")
-        os.system(cmd)
+        prime = ''
+        primeline = re.search('(["\']primecmd["\']: ["\'])([a-zA-Z_0-9]*)(["\'])', alllines)
+        if primeline:
+            print(f'|... primeline found: ex: "primecmd": "nntrain", ')
+            print(f'|... prime is 2nd in primeline')
+            prime = primeline[2]
+            print(f'|... prime: {prime}')
 
-        if os.path.exists(tmpfile_path):
-            os.remove(tmpfile_path)
-        if os.path.exists(newfile_path):
-            os.remove(newfile_path)
-        os.rename(interfile_path, newfile_path) # interfile_path => newfile_path
+            nndefs = re.findall('def (nn[a-zA-Z_0-9]*)', alllines, re.DOTALL)
+            if nndefs:
+                print(f'|... nndefs found: {nndefs}')
+
+                for nndef in nndefs:
+                    newfilename = f'{basename}-{nndef}.{newextension}'
+                    newfile_path = os.path.join(args.pyons_dir, newfilename)
+
+                    print(f"|... REPLACE {prime} with {nndef} into {newfile_path}")
+                    alllines = re.sub('(["\']primecmd["\']: ["\'])([a-zA-Z_0-9]*)(["\'])', f'\\1{nndef}\\3', alllines)
+
+                    newprimeline = re.search('(["\']primecmd["\']: ["\'])([a-zA-Z_0-9]*)(["\'])', alllines)
+                    newprime = newprimeline[2]
+
+                    print(f'|... newprime is: {newprime} ')
+
+                    with open(tmpfile_path, 'w') as outfile:
+                        outfile.write(alllines)
+
+                    cmd = f'p2j {tmpfile_path}' # tmpfile_path => interfile_path
+                    print(f"|---> convert to ipynb")
+                    print(f"|---> cmd {cmd}")
+                    os.system(cmd)
+
+                    if os.path.exists(tmpfile_path):
+                        os.remove(tmpfile_path)
+                    if os.path.exists(newfile_path):
+                        os.remove(newfile_path)
+                    os.rename(interfile_path, newfile_path) # interfile_path => newfile_path
+
+        else:
+            with open(tmpfile_path, 'w') as outfile:
+                outfile.write(alllines)
+
+            cmd = f'p2j {tmpfile_path}' # tmpfile_path => interfile_path
+            print(f"|---> convert to ipynb")
+            print(f"|---> cmd {cmd}")
+            os.system(cmd)
+
+            if os.path.exists(tmpfile_path):
+                os.remove(tmpfile_path)
+            if os.path.exists(newfile_path):
+                os.remove(newfile_path)
+            os.rename(interfile_path, newfile_path) # interfile_path => newfile_path
 
 
      #   ******************

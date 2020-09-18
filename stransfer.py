@@ -128,7 +128,7 @@ onlllyas = Onlllyas()
 #
 def getap():
     cp = {
-        "primecmd": 'nnani',        
+        "primecmd": "nnani",        
 
         "MNAME": "stransfer",      
         "AUTHOR": "xueyangfu",      
@@ -136,23 +136,15 @@ def getap():
         "GITPOD": "neural-style-tf",      
         "DATASET": "styler",        
     
-        "GDRIVE": 1,            # mount gdrive: gdata, gwork    
-        "TRAINDO": 1,      
-        "MAKEGIF": 1,      
-        "RUNGIF": 0,      
-        "CLEARTMP": 0,      
-        "REGET": 0,             # get again data 
-        "ING": 1,               # ckpt in gwork
-        "MODITEM": "",          # will look into module
         "RESETCODE": 0,
         "LOCALDATA": 0,
         "LOCALMODELS": 0,
         "LOCALLAB": 1,
+
         "grel_infix": '../..',            # relative path to content 
         "net_prefix": '//enas/hdrive',     
         "gdrive_prefix": '/content/drive/My Drive',     
         "gcloud_prefix": '/content',     
-
     }
 
     local_prefix = os.path.abspath('')
@@ -304,7 +296,9 @@ def getxp(cp):
         "device": '/gpu:0',
 
     }
+
     xp={}
+
     for key in cp.keys():
         xp[key] = cp[key]
 
@@ -323,7 +317,6 @@ def getxp(cp):
 #
 #
 def get_content_frame(frame, args):
-        
     video_input_dir = args.video_input_dir
     frame_content_frmt = args.frame_content_frmt
 
@@ -388,10 +381,11 @@ def cv2_frame(cvi, refimg, scale):
     return img
 #
 def get_style_cvis(content_img, args):
-    print(f'|---> get_style_cvis  \n \
-        content_img: {args.style_imgs_files} \n \
-        args.style_imgs_dir: {args.style_imgs_dir} \n \
-    ')
+    if args.verbose >0:
+        print(f'|---> get_style_cvis  \n \
+            content_img: {args.style_imgs_files} \n \
+            args.style_imgs_dir: {args.style_imgs_dir} \n \
+        ')
 
     style_imgs=[]
     style_imgs_dir=args.style_imgs_dir
@@ -404,7 +398,8 @@ def get_style_cvis(content_img, args):
     cvis = []
     for style_fn in args.style_imgs_files:
         path = os.path.join(style_imgs_dir, style_fn)
-        print(f'|...> get_style_cvis path {path}')        
+        if args.verbose >0:
+            print(f'|...> get_style_cvis path {path}')        
         # bgr image
         cvi = cv2.imread(path, cv2.IMREAD_COLOR)
         img = cv2_frame(cvi, content_img, style_scale)
@@ -426,7 +421,8 @@ def get_input_image(
         noise_ratio = 1.0, 
         args=None
     ):
-    print(f"|---> get_input_image of type: {init_type} with frame: {frame}")
+    if args.verbose >0:
+        print(f"|---> get_input_image of type: {init_type} with frame: {frame}")
 
     if init_type == 'content':
         return content_img
@@ -490,12 +486,14 @@ def get_noise_image(noise_ratio, content_img,
     return img
 #
 def get_mask_image(mask_img, width, height, 
-        content_imgs_dir = './'
+        content_imgs_dir = './',
+        args = None
     ):
     path = os.path.join(content_imgs_dir, mask_img)
     img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
     #check_file(img, path)
-    print(f'|---> get_mask_image {path}')
+    if args.verbose > 0:
+        print(f'|---> get_mask_image {path}')
     img = cv2.resize(img, dsize=(width, height), interpolation=cv2.INTER_AREA)
     img = img.astype(np.float32)
     mx = np.amax(img)
@@ -511,7 +509,8 @@ def get_prev_frame(frame, args=None):
     prev_frame = frame - 1
     fn = frame_content_frmt.format(str(prev_frame).zfill(zfill))
     path = os.path.join(video_output_dir, fn)
-    print(f"|---> get_prev_frame for frame: {frame} from {path}")
+    if args.verbose > 0:
+        print(f"|---> get_prev_frame for frame: {frame} from {path}")
 
     # img = cv2.imread(path, cv2.IMREAD_COLOR)
     # check_file(img, path)
@@ -528,7 +527,8 @@ def get_prev_warped_frame(frame, args=None):
     frame_content_frmt = args.frame_content_frmt
 
     prev_img = get_prev_frame(frame, args)
-    print(f"|---> get_prev_frame in {video_input_dir} with {frame_content_frmt}")
+    if args.verbose > 0:
+        print(f"|---> get_prev_frame in {video_input_dir} with {frame_content_frmt}")
     prev_frame = frame - 1
     # backwards flow: current frame -> previous frame
     fn = backward_optical_flow_frmt.format(str(frame), str(prev_frame))
@@ -598,7 +598,7 @@ def write_image_output(output_img,
         args=None,
     ):
 
-    if args.verbose > 1:
+    if args.verbose > 0:
         print(f'|---> write_image_output \n \
             to img_output_dir: {args.img_output_dir} \n \
             epoch: {epoch} \n \
@@ -758,12 +758,13 @@ def gram_matrix(x, area, depath):
     return G
 #
 def mask_style_layer(a, x, mask_img, args=None):
-    if 1:
+    if args.verbose > 0:
         print(f'|---> mask_style_layer {mask_img}')    
     _, h, w, d = a.get_shape()
     #mask = get_mask_image(mask_img, w.value, h.value)
     mask = get_mask_image(mask_img, w, h,
-        content_imgs_dir=args.style_imgs_dir) # _e_
+        content_imgs_dir=args.style_imgs_dir,
+        args=args) # _e_
     mask = tf.convert_to_tensor(value=mask)
     tensors = []
     # for _ in range(d.value): 
@@ -777,7 +778,7 @@ def mask_style_layer(a, x, mask_img, args=None):
     return a, x
 #
 def sum_masked_style_losses(net, combo, style_imgs, args=None):
-    if 0:
+    if args.verbose > 0:
         print(f'|---> sum_masked_style_losses')
     total_style_loss = 0.
     weights = args.style_imgs_weights
@@ -801,7 +802,7 @@ def sum_masked_style_losses(net, combo, style_imgs, args=None):
     return total_style_loss
 #
 def sum_style_losses(net, combo, style_imgs, args=None):
-    if 0:
+    if args.verbose > 0:
         print(f'|---> sum_style_losses')    
     total_style_loss = 0.
     weights = args.style_imgs_weights
@@ -822,7 +823,7 @@ def sum_style_losses(net, combo, style_imgs, args=None):
     return total_style_loss
 #
 def sum_content_losses(net, combo, content_img, args=None):
-    if 0:
+    if v
         print(f'|---> sum_content_losses')     
     # net['input'].assign(content_img)
     content_loss = 0.
@@ -895,7 +896,6 @@ def write_image(path, img):
   cv2.imwrite(path, img)
 #
 def preprocess_tensor(inputs):
-
     # Keras works with batches of images. 
     # So, the first dimension is used for the number of samples (or images) you have.
     # vgg_mean = np.array([123.68, 116.779, 103.939], dtype=np.float32).reshape((3,1,1))
@@ -912,7 +912,6 @@ def preprocess_tensor(inputs):
     return imgpre
 #
 def preprocess_tensors(inputs):
-
     pretensors = []
     for item in inputs:
         preitem = preprocess_tensor(item)
@@ -973,14 +972,15 @@ def read_weights_file(path):
   return weights
 #
 def normalize(weights):
-  denom = sum(weights)
-  if denom > 0.:
-    return [float(i) / denom for i in weights]
-  else: return [0.] * len(weights)
+    denom = sum(weights)
+    if denom > 0.:
+        return [float(i) / denom for i in weights]
+    else: 
+        return [0.] * len(weights)
 #
 def check_image(img, path):
-  if img is None:
-    raise OSError(errno.ENOENT, "No such file", path)
+    if img is None:
+        raise OSError(errno.ENOENT, "No such file", path)
 #
 # rendering -- where the magic happens
 def compute_loss(combo):
@@ -1087,14 +1087,15 @@ class GAN(tf.keras.models.Model):
         )
 
         layer_names = content_layers + style_layers
-        print("|...> GAN content_layers", content_layers)
-        print("|...> GAN style_layers", style_layers)
-        print("|...> GAN layers", layer_names)
+        if args.verbose > 0:
+            print("|...> GAN content_layers", content_layers)
+            print("|...> GAN style_layers", style_layers)
+            print("|...> GAN layers", layer_names)
         outputs = {name: vggmodel.get_layer(name).output for name in layer_names}        
         # outputs = [vggmodel.get_layer(name).output for name in layer_names]
         self.net = tf.keras.Model([vggmodel.input], outputs) 
         self.net.trainable = False        
-        if 0:
+        if args.verbose > 0:
             self.net.summary()
 
         self.optimizer = tf.optimizers.Adam(

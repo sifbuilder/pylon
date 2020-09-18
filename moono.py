@@ -130,7 +130,7 @@ onmoono = Onmoono()
 #   CONTEXT
 #
 #
-#   *******************
+#
 def getap():
     # https://github.com/moono/stylegan2-tf-2.x/tree/master/stylegan2
     cp = {
@@ -1639,17 +1639,6 @@ def nntrain(args, kwargs):
             name='stylegan2-ffhq'
         )
         trainer.train()
-#
-def nninfo(args, kwargs):
-	args = onutil.pargs(vars(args))
-	onutil.ddict(vars(args), 'args')
-	print(f"|===> nninfo: {args.MNAME} {args.AUTHOR} {args.PROJECT} {args.GITPOD} {args.DATASET} \n \
-		nnutils: try rgb2nba, nba2rgb, merge batch images  \n \
-		nngen: generate image  \n \
-		nndisc: discriminate image  \n \
-		nnffhq: test tfrecord input funcion \n \
-		nntrain: train model with g_params, d_params \n \
-	")
 #
 #
 #

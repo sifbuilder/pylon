@@ -136,23 +136,15 @@ def getap():
         "GITPOD": "facades",
         "DATASET": "facades",
 
-        "GDRIVE": 1,            # mount gdrive: gdata, gwork    
-        "TRAINDO": 1,      
-        "MAKEGIF": 1,      
-        "RUNGIF": 0,      
-        "CLEARTMP": 0,      
-        "REGET": 0,             # get again data 
-        "ING": 1,               # ckpt in gwork
-        "MODITEM": "",          # will look into module
         "RESETCODE": 0,
         "LOCALDATA": 0,
         "LOCALMODELS": 0,
         "LOCALLAB": 1,
+
         "grel_infix": '../..',            # relative path to content 
         "net_prefix": '//enas/hdrive',     
         "gdrive_prefix": '/content/drive/My Drive',     
         "gcloud_prefix": '/content',     
-
     }
 
     local_prefix = os.path.abspath('')
@@ -870,6 +862,9 @@ def download_and_processing_pix2pix_dataset(data_dir_or_predefined_task_name=Non
 #
 #   CMDS
 #
+#    ref: https://github.com/NVIDIA/pix2pixHD
+#    ref: https://www.tensorflow.org/tutorials/generative/pix2pix
+#
 #   nnzip
 #   
 def nnzip(args, kwargs):
@@ -1042,6 +1037,13 @@ def nnzip(args, kwargs):
 #
 #
 #   nndanboo
+#
+#   https://github.com/lllyasviel/DanbooRegion
+#       InProceedings=DanbooRegion2020
+#       author=Lvmin Zhang, Yi JI, and Chunping Liu
+#       booktitle=European Conference on Computer Vision (ECCV)
+#       title=DanbooRegion: An Illustration Region Dataset
+#       year=2020
 #
 def nndanboo(args, kwargs):
     
@@ -2919,32 +2921,6 @@ def nngoya(args, kwargs):
         onplot.pil_show_rgbs(display_list, scale=1, rows=1)  
 
     print(f'|---> end nngoya')
-#
-#
-#   nngoya
-#   
-def nninfo(args, kwargs):
-
-    args = onutil.pargs(vars(args))
-    onutil.ddict(vars(args), 'args')
-
-    print(f"|---> pix2pix:  \n \
-    nndanboo: implement https://github.com/lllyasviel/DanbooRegion \n \
-    nncrys: train quimica_tech dataset\n \
-    nnfacades: train facades dataset {args.dataorg_dir} \n \
-    nnleonardo: train leonardo dataset {args.dataorg_dir} \n \
-    nninfo: show commands \n \
-    tree, data,  \n \
-    ref: https://github.com/NVIDIA/pix2pixHD \n \
-    ref: https://www.tensorflow.org/tutorials/generative/pix2pix \n \
-    \n \
-    citations:\n \
-        InProceedings=DanbooRegion2020,\n \
-        author=Lvmin Zhang, Yi JI, and Chunping Liu, \n \
-        booktitle=European Conference on Computer Vision (ECCV), \n \
-        title=DanbooRegion: An Illustration Region Dataset, \n \
-        year=2020, \n \
-    ")
 #
 #
 #
