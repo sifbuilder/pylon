@@ -1916,22 +1916,6 @@ def nnwalk(args, kwargs):
     #     out = generator([z, None]) # _e_
     #     out_image = onrosa.convert_images_to_uint8(out, nchw_to_nhwc=True, uint8_cast=True)
 #
-#   nninfo
-#
-def nninfo(args, kwargs):
-
-    args = onutil.pargs(vars(args))
-    onutil.ddict(vars(args), 'args')
-
-    print(f"|===> nninfo:  \n \
-        nnviv: run git stylegan_two.py cmd \n \
-        nnearth: earth model \n \
-        nntrain: fit model with args \n \
-        nnwalk: generate images with model on seeds \n \
-        nneval: evaluate model on LandscapesBig \n \
-        nntrunc: model generate truncated images \n \
-    \n ")
-#
 #   nnproj
 #
 def nnproj(args, kwargs):
