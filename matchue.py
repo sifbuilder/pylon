@@ -132,7 +132,7 @@ onmoono = Onmoono()
 #
 def getap():
     cp = {
-        "primecmd": 'nntrain',
+        "primecmd": 'nnspace',
 
         "MNAME": "matchue",
         "AUTHOR": "manicman1999",
@@ -198,7 +198,7 @@ def getxp(cp):
 #   NETS
 #
 #
-# Convolutional layers.
+# Convolutional layers
 #
 class Conv2DMod(tf.keras.layers.Layer):
 
@@ -358,7 +358,7 @@ class StyleGan2(object):
         silent = True,
 
     ):
-        print(" ------------- matchue ------------- ")
+        print("|---> StyleGan2")
         self.name = name
 
         self.results_dir = results_dir
@@ -380,7 +380,7 @@ class StyleGan2(object):
 
         self.qsteps = qsteps       
         if 0:                         # to train steps
-            print("StyleGan:qsteps: will train up to %d steps" %self.qsteps)
+            print("|...> StyleGan:qsteps: will train up to %d steps" %self.qsteps)
 
         self.n_cycle = n_cycle  # will evaluate model each
         self.n_save = n_save    # will save model each
@@ -396,7 +396,7 @@ class StyleGan2(object):
     
         self.n_layers = int(log2(im_size) - 1)
         if 0:
-            print("matchue.Gan.n_layers %d" %self.n_layers)
+            print("|...> matchue.Gan.n_layers %d" %self.n_layers)
 
         #Models
         self.D = None
@@ -434,25 +434,25 @@ class StyleGan2(object):
         # --------------
         self.ncyc = ncyc
         if self.ncyc is not None:
-            print(f"ncyc {self.ncyc} specified as arg")
+            print(f"|...> ncyc {self.ncyc} specified as arg")
         else:
             lastSavedCyc = self.getRecordNumber()
             if lastSavedCyc is not None:
                 print()
-                print("StyleGan2:lastSavedCyc: %d" %lastSavedCyc)
+                print("|...> StyleGan2:lastSavedCyc: %d" %lastSavedCyc)
                 print()
             self.ncyc = lastSavedCyc
 
         if self.ncyc is not None:
             nstep = (self.ncyc + 1) * self.n_cycle + 1 # cyc 0 save will jump to n_cycle steps
             self.steps = nstep
-            print(f"StyleGan2:load MODEL {self.ncyc} for steps: {nstep}")
+            print(f"|...> StyleGan2:load MODEL {self.ncyc} for steps: {nstep}")
             self.load(self.ncyc)
         else:
-            print("StyleGan2:ncyc is None, will not load model")
+            print("|...> StyleGan2:ncyc is None, will not load model")
 
         if 0:
-            print("StyleGan2:steps %d" %self.steps)
+            print("|...> StyleGan2:steps %d" %self.steps)
 
         #Set up variables
         self.lastblip = time.process_time()
@@ -606,7 +606,7 @@ class StyleGan2(object):
         return self.D
 
     def stylemapper(self):
-        print(" ------------- matchue stylemapper start ------------- ")
+        print("|---> stylemapper")
 
         if self.S:
             return self.S
@@ -627,7 +627,7 @@ class StyleGan2(object):
         return self.S
 
     def generator(self):
-        print(" ------------- matchue generator start ------------- ")
+        print("|---> generator")
 
         latent_size = self.latent_size
         cha = self.cha
@@ -706,10 +706,10 @@ class StyleGan2(object):
 
         # Generator Model for Evaluation
         if 0:
-            print("GM")
-            print("GM:n_layers", n_layers)
-            print("GM:im_size", im_size)
-            print("GM:latent_size", latent_size)
+            print("|...> GM")
+            print("|...> GM:n_layers", n_layers)
+            print("|...> GM:im_size", im_size)
+            print("|...> GM:latent_size", latent_size)
 
         inp_style = []
         style = []
@@ -720,9 +720,9 @@ class StyleGan2(object):
 
         inp_noise = Input([im_size, im_size, 1])
 
-        if 0:
-            print("GM:shape style (added S layers)", np.shape(style)) # (7,)
-            print("GM:shape style plus noise", np.shape(style + [inp_noise])) # (8,)
+        if 1:
+            print("|...> GM:shape style (added S layers)", np.shape(style)) # (7,)
+            print("|...> GM:shape style plus noise", np.shape(style + [inp_noise])) # (8,)
 
         if 0:
             self.G.summary()
@@ -730,9 +730,9 @@ class StyleGan2(object):
         gf = self.G(style + [inp_noise])
 
         if 0:
-            print("GM:shape style + noise", np.shape(inp_style + [inp_noise])) # style + noise (8,)
+            print("|...> GM:shape style + noise", np.shape(inp_style + [inp_noise])) # style + noise (8,)
             # A None dimension in a shape tuple means that the network will be able to accept inputs of any dimension
-            print("GM:shape generated style + noise", np.shape(gf)) # (None, 256, 256, 3)
+            print("|...> GM:shape generated style + noise", np.shape(gf)) # (None, 256, 256, 3)
 
         self.GM = Model(inputs = inp_style + [inp_noise], outputs = gf)
 
@@ -825,7 +825,7 @@ class StyleGan2(object):
 
         firststep = self.steps
 
-        print(f"|===> fit:  \n \
+        print(f"|---> fit:  \n \
             steps: {self.steps} \n \
             qsteps: {self.qsteps} \n \
             reststeps: {reststeps} \n \
@@ -860,7 +860,7 @@ class StyleGan2(object):
 
             if self.steps - firststep < 6: # doc first steps
 
-                print(f"|===> step: {self.steps - firststep}:  \n \
+                print(f"|...> step: {self.steps - firststep}:  \n \
                     styletype: {styletype} \n \
                     style: {np.shape(style)} {type(style)} \n \
                     images: {np.shape(images)} {type(images)} \n \
@@ -899,7 +899,7 @@ class StyleGan2(object):
 
             if self.steps % 100 == 0:
                 if self.verbose:
-                    print(f'|===> fit:  \n \
+                    print(f'|...> fit:  \n \
                         steps:  {str(self.steps)}\n \
                         steps to save model:  {n_save - (self.steps % n_save)}\n \
                         steps to increase cycle:  {n_cycle - (self.steps % n_cycle)}\n \
@@ -908,7 +908,7 @@ class StyleGan2(object):
 
             if self.steps % 100 == 0:
                 if self.verbose:
-                    print(f"|===> fit:  \n \
+                    print(f"|...> fit:  \n \
                         D loss:     {np.array(a)}\n \
                         G loss:     {np.array(b)}\n \
                         path length:{self.pl_mean}\n \
@@ -928,7 +928,7 @@ class StyleGan2(object):
                 minutes_left = (steps_left // steps_per_minute) % 60
 
                 if self.verbose:
-                    print(f'|===> fit:  \n \
+                    print(f'|...> fit:  \n \
                         StyleGan2 Steps/Second:  {str(round(steps_per_second, 2))}\n \
                         StyleGan2 1k Steps:  {str(min1k) + ":" + str(sec1k)} \n \
                         StyleGan2 Till Completion: {str(int(hours_left)) + "h" + str(int(minutes_left)) + "m"} \n \
@@ -937,7 +937,7 @@ class StyleGan2(object):
                 # save model
                 if self.steps % n_save == 0:
                     _num = int(floor(self.steps / n_ref))
-                    print(f"|===> fit:  \n \
+                    print(f"|...> fit:  \n \
                         step :  {self.steps}\n \
                         save model :  {_num}\n \
                     ")                          
@@ -946,7 +946,7 @@ class StyleGan2(object):
                 # increase cycle
                 if self.steps % n_cycle == 0:
                     self.ncyc = floor(self.steps / n_cycle)
-                    print(f"|===> fit:  \n \
+                    print(f"|...> fit:  \n \
                         self.steps:  {self.steps}\n \
                         n_cycle:  {n_cycle}\n \
                         StyleGan2.train cycle:  {self.ncyc}\n \
@@ -954,7 +954,7 @@ class StyleGan2(object):
 
                 # Model Evaluate
                 if self.steps % n_cycle == 0:
-                    print(f"|===> fit:  \n \
+                    print(f"|...> fit:  \n \
                         evaluate step:  {self.steps}\n \
                     ")                        
                     self.evaluate(self.steps)
@@ -1038,7 +1038,7 @@ class StyleGan2(object):
 
     #
     def evaluate(self, trunc = 1.0, outImage = True, num = None, qsegs = 1, frames=1, verbose=False):
-
+        print(f"|---> evaluate")
         results_dir = self.results_dir
         latent_size = self.latent_size
         noise = self.noise      # np.random.normal(0.0, 1.0, size = [n, self.latent_size]).astype('float32')
@@ -1071,7 +1071,7 @@ class StyleGan2(object):
         # GM  predict
         seed = nnoisedata + [nimagedata] #
         if self.verbose:
-            print(f"|===> evaluate:  \n \
+            print(f"|...> evaluate:  \n \
                 get samples: {qcells} * {latent_size} normal distribution, style map, average \n \
                 nnoisedata:  {np.shape(nnoisedata)} {type(nnoisedata)}\n \
                 [nimagedata]:  {np.shape([nimagedata])} {type([nimagedata])}\n \
@@ -1178,7 +1178,7 @@ class StyleGan2(object):
         z_images = GE.predict(seeds, batch_size = BATCH_SIZE)
 
         if self.verbose:
-            print(f"|===> generateTruncated:  \n \
+            print(f"|...> generateTruncated:  \n \
                 [noises]: {np.shape([noises])} {type([noises])} \n \
                 dlatent_imgs: {np.shape(dlatent_imgs)} {type(dlatent_imgs)} \n \
                 trunc get {qcells} * {latent_size} normal distribution samples, style map, average\n \
@@ -1187,7 +1187,7 @@ class StyleGan2(object):
         if outImage:
             imgpath = os.path.join(results_dir, f"t{str(num)}.png")
             if self.verbose:
-                print(f"|===> generateTruncated:  \n \
+                print(f"|...> generateTruncated:  \n \
                     save:  {imgpath}\n \
                 ")                   
             onformat.imgs_to_tiling(z_images, imgpath, qsegs)
@@ -1216,7 +1216,10 @@ class StyleGan2(object):
         frameCount = 0
         time = 0
         nframes = int( maxTime*fps )
-        print(f"walk get {qcells} * {latent_size} normal distribution samples, style map, average")
+        print(f"|---> generateWalk \n \
+            ani_dir: save frames to {ani_dir} \n \
+            walk get {qcells} * {latent_size} normal distribution samples, style map, average \
+        ")
 
         # Get W's (latents') center of mass
         dlatent_avg_start = np.random.normal(0.0, 1.0, size = [qcells, latent_size]).astype('float32')
@@ -1230,7 +1233,7 @@ class StyleGan2(object):
 
         noises = np.random.uniform(0.0, 1.0, size = [qcells, im_size, im_size, 1]).astype('float32')  # (1, 9, 512, 512, 1)
 
-        print(f"|===> generateWalk:  \n \
+        print(f"|...> generateWalk:  \n \
             nframes: {nframes} \n \
             qcells: {qcells} \n \
             latent_size: {latent_size} \n \
@@ -1241,7 +1244,7 @@ class StyleGan2(object):
         for i in range(nframes): 
             time = i/nframes
             if 0:
-                print(f"{i} -------------------------{time} {maxTime} {time/maxTime}")
+                print(f"|...> {i} -------------------------{time} {maxTime} {time/maxTime}")
             for k in range(qcells):
                 
                 for j in range(latent_size): # _e_
@@ -1283,12 +1286,12 @@ class StyleGan2(object):
         num_re = re.compile(r'^gen_(\d+).h5$')
 
         if self.verbose:
-            print("getRecordNumber in models_dir", models_dir)
+            print("|---> getRecordNumber in models_dir", models_dir)
         
         for file in os.listdir(models_dir):
             m = num_re.search(file)
             if 0:
-                print("getRecordNumber", file, m)            
+                print("|...> getRecordNumber", file, m)            
             if m:
                 num = int(m.group(1))
                 nums.append(num)     
@@ -1319,15 +1322,15 @@ class StyleGan2(object):
 
         mod = model_from_json(json, custom_objects = {'Conv2DMod': Conv2DMod})
         weights_path = models_dir + "/"+name+"_"+str(num)+".h5"
-        if 0:
-            print(f"loadModel weights_path: {weights_path}")
+        if 1:
+            print(f"|---> loadModel weights_path: {weights_path}")
         mod.load_weights(weights_path)
         return mod
 
     def save(self, num): #Save JSON and Weights into /Models/
 
         if self.verbose:
-            print(f"StyleGan.save num {num}")
+            print(f"|===> StyleGan.save num {num}")
 
         self.saveModel(self.S, "sty", num)
         self.saveModel(self.G, "gen", num)
@@ -1339,7 +1342,7 @@ class StyleGan2(object):
     def load(self, num): #Load JSON and Weights from /Models/
 
         if self.verbose:
-            print("StyleGan.load num %d" %num)
+            print("|===> StyleGan.load num %d" %num)
 
         #Load Models
         self.D = self.loadModel("dis", num)
@@ -1356,10 +1359,9 @@ class StyleGan2(object):
 #   CMDS
 #
 #
+#   nnrun
 #
-#   nnviv
-#
-def nnviv(args, kwargs):
+def nnrun(args, kwargs):
 
     args = onutil.pargs(vars(args))
 
@@ -1386,7 +1388,7 @@ def nnviv(args, kwargs):
         args.data_dir = os.path.join(args.data_dir, 'Earth')
         os.makedirs(args.data_dir, exist_ok=True)    
 
-    print(f"|===> nnviv:  \n \
+    print(f"|===> nnrun:  \n \
         cwd:  {os.getcwd()}, \n \
         args.dataorg_dir: {args.dataorg_dir}, \n \
         args.results_dir: {args.results_dir}, \n \
@@ -1395,8 +1397,8 @@ def nnviv(args, kwargs):
         ")
 
     if 1: # copy models
-        earth_model_src_dir = os.path.join(args.gdata, "LandscapesBig")
-        onfile.copyfolder(earth_model_src_dir, args.models_dir)
+        earth_model_src_dir = os.path.join(args.gmodel, "LandscapesBig")
+        onfile.folder_to_folder(earth_model_src_dir, args.models_dir)
 
     if 0: # copy images
         clip = (256, 256)
@@ -1416,20 +1418,40 @@ def nnearth(args, kwargs):
     args = onutil.pargs(vars(args))
     onutil.ddict(vars(args), 'args')
 
-    args.models_dir = os.path.join(args.gmodel, 'LandscapesBig')
+    print(f'|===> {args.MNAME}:{args.PROJECT} \n \
+        data: {args.DATASET}) \n \
+        code: {args.GITPOD} \n \
+    ')
 
-    clip = (256, 256)
-    latent_size = 512
-    im_size = 256
-    BATCH_SIZE = 8
-    mixed_prob = 0.9
-    qsteps = 20001
+    if 1: # tree
+        if 0:
+            args.models_dir = os.path.join(args.gmodel, 'LandscapesBig')
 
-    n_cycle = 500  # will evaluate model each
-    n_save = int(n_cycle / 1)    # will save model each
-    n_ref = n_cycle   # will identify model each
+        os.makedirs(args.models_dir, exist_ok=True)             
+        os.makedirs(args.data_dir, exist_ok=True)             
+        os.makedirs(args.results_dir, exist_ok=True)             
 
-    print(f"|===> nnearth:  \n \
+    print(f'\n |===> tree \n \
+        cwd:  {os.getcwd()}, \n \
+        args.dataorg_dir: {args.dataorg_dir}, \n \
+        args.results_dir: {args.results_dir}, \n \
+        args.models_dir:  {args.models_dir}, \n \
+        args.data_dir:    {args.data_dir}, \n \
+    \n ')
+
+    if 1: # config
+        clip = (256, 256)
+        latent_size = 512
+        im_size = 256
+        BATCH_SIZE = 8
+        mixed_prob = 0.9
+        qsteps = 20001
+
+        n_cycle = 500  # will evaluate model each
+        n_save = int(n_cycle / 1)    # will save model each
+        n_ref = n_cycle   # will identify model each
+
+    print(f"|===> config:  \n \
                 cwd: {os.getcwd()}, \n \
                 results_dir: {args.results_dir}, \n \
                 models_dir:  {args.models_dir}, \n \
@@ -1443,27 +1465,31 @@ def nnearth(args, kwargs):
                 qsteps: {qsteps}, \n \
             \n ")
 
-    model = StyleGan2(lr = 0.0001, silent = False,
+    if 1: # model
+        print(f"|===> model")
+        model = StyleGan2(lr = 0.0001, silent = False,
 
-        latent_size = latent_size,
-        im_size = im_size,
-        BATCH_SIZE = BATCH_SIZE, # 16
-        mixed_prob = mixed_prob,
-        qsteps = qsteps,   #   up to step
+            latent_size = latent_size,
+            im_size = im_size,
+            BATCH_SIZE = BATCH_SIZE, # 16
+            mixed_prob = mixed_prob,
+            qsteps = qsteps,   #   up to step
 
-        n_cycle = n_cycle,
-        n_save = n_save,
-        n_ref = n_ref,
+            n_cycle = n_cycle,
+            n_save = n_save,
+            n_ref = n_ref,
 
-        results_dir = args.results_dir,
-        models_dir = args.models_dir,
-        dataorg_dir = args.dataorg_dir,
-        data_dir = args.data_dir,
-        dataset_dir = args.dataset_dir,
-    )
+            results_dir = args.results_dir,
+            models_dir = args.models_dir,
+            dataorg_dir = args.dataorg_dir,
+            data_dir = args.data_dir,
+            dataset_dir = args.dataset_dir,
+        )
 
-    if 1:
+    if 1: # evaluate
+        print(f"|===> evaluate")        
         model.evaluate(trunc = 0.7, qsegs = 1)
+#
 #
 #   nndata
 #
@@ -1482,22 +1508,37 @@ def nndata(args, kwargs):
                 cwd: {os.getcwd()} \n \
         \n ")
 
-    zfill = 4
 
-    tile = (int(512*2), int(512*2))
-    clip = (512, 512)
-    im_size = 512
+    if 1:   # config
+        zfill = 4
 
-    latent_size = 512
-    BATCH_SIZE = 8
-    mixed_prob = 0.9
-    qsteps = 200001
+        tile = (int(512*2), int(512*2))
+        clip = (512, 512)
+        im_size = 512
 
-    if 1: # clear code folder
-        onfile.clearfolder(args.proj_dir, inkey=args.PROJECT)
+        latent_size = 512
+        BATCH_SIZE = 8
+        mixed_prob = 0.9
+        qsteps = 200001
+
+    print(f'|===> config \n \
+                tile:  {tile}, \n \
+                clip:  {clip}, \n \
+                im_size:  {im_size}, \n \
+                latent_size:  {latent_size}, \n \
+                BATCH_SIZE:  {BATCH_SIZE}, \n \
+                mixed_prob:  {mixed_prob}, \n \
+                qsteps:  {qsteps}, \n \
+                zfill: {zfill} \n \
+        \n ')
+
+    if 0: # clear code folder
+        print(f'|===> clear code folder')
+        onfile.folder_to_void(args.proj_dir, inkey=args.PROJECT)
 
     if 0: # clear domain folder
-        onfile.clearfolder(args.proto_dir, inkey=args.MNAME)
+        print(f'|===> clear domain folder')
+        onfile.folder_to_void(args.proto_dir, inkey=args.MNAME)
 
     if 1: # tree
         args.dataorg_dir=os.path.join(args.dataorg_dir, "")
@@ -1522,7 +1563,7 @@ def nndata(args, kwargs):
         os.makedirs(tmp2_dir, exist_ok=True)
         os.makedirs(tmp3_dir, exist_ok=True)
 
-    print(f"|===> nndata \n \
+    print(f"|===> tree \n \
                 dataorg (raw) => tmp (raw) => data (formed) => dataset (npy) \n \
                 cwd:  {os.getcwd()}, \n \
                 args.dataorg_dir: {args.dataorg_dir} \n \
@@ -1532,35 +1573,26 @@ def nndata(args, kwargs):
                 args.results_dir: {args.results_dir} \n \
         \n ")
 
-    print(f"|===> nndata:  \n \
-                clip: {clip} \n \
-                latent_size: {latent_size} \n \
-                im_size: {im_size} \n \
-                BATCH_SIZE: {BATCH_SIZE} \n \
-                mixed_prob: {mixed_prob} \n \
-                qsteps: {qsteps} \n \
-        \n ")
-
     if 0: #     copy models tp models_dir
-        print(f"copy models from {earth_model_src_dir} to {args.models_dir}")
+        print(f"|===> copy models from {earth_model_src_dir} to {args.models_dir}")
         earth_model_src_dir = os.path.join(args.gdata, "LandscapesBig")
-        onfile.copyfolder(earth_model_src_dir, args.models_dir)
+        onfile.folder_to_folder(earth_model_src_dir, args.models_dir)
 
     if 0: #     plot dataorg sample
         imgs = onfile.folder_to_pils(args.dataorg_dir, n=1)
         img = imgs[0]
-        print(f"img {type(img)} {np.shape(img)}")
+        print(f"|===> plot img {type(img)} {np.shape(img)}")
         onplot.pil_show_pil(img)
 
     if 0: #     dataorg to tmp1_dir (raws to named)
-        print(f"nndata {onfile.qfiles(args.dataorg_dir)} raws in {args.dataorg_dir}")
+        print(f"|===> {onfile.qfiles(args.dataorg_dir)} raws in {args.dataorg_dir}")
         onfile.folder_to_named_files(args.dataorg_dir, tmp1_dir, n=-1) # _e_
         # onfile.folder_to_named_files(args.dataorg_dir, tmp1_dir, n=18) # _e_
 
     if 1: #     tmp1_dir to tmp2_dir (raws  to  formed)
         
         paths = onfile.folder_to_paths(tmp1_dir)
-        print(f"{len(paths)} raws in {tmp1_dir} to {tmp2_dir}")
+        print(f"|===> {len(paths)} raws in {tmp1_dir} to {tmp2_dir}")
 
         if 1:  # get form imgs
 
@@ -1571,7 +1603,7 @@ def nndata(args, kwargs):
                 ext = os.path.splitext(basename)[1]
                 namecode = name[len("img"):]
                 if 0:
-                    print(f"nndata imgpath: {imgpath}  {basename} {name} {ext} {namecode}")
+                    print(f"|===> imgpath: {imgpath}  {basename} {name} {ext} {namecode}")
 
                 newidx=0
                 with Image.open(imgpath) as img:
@@ -1618,6 +1650,7 @@ def nndata(args, kwargs):
 
     if 1: #     tmp2_dir => dedup => tmp3_dir / excluded
             #   tmp2_dir =>       => data_dir
+        print(f"|===> dedup from {tmp2_dir} to {data_dir}")
         pairs = []            
         args.process_type = 'exclude'
         args.file_extension = 'jpg'
@@ -1627,21 +1660,22 @@ def nndata(args, kwargs):
         pairs = onfile.folder_to_cv_name_pairs(tmp2_dir, args) # get from 
 
         deduppairs = onset.exclude(pairs, args) 
-        print(f"nndata: got {len(deduppairs)} dedups")
+        print(f"|...>: got {len(deduppairs)} dedups")
 
         if not len(deduppairs) == onfile.qfiles(args.data_dir):
             args.output_folder = args.data_dir  # imgs => output_folder (data_dir)
-            print(f"nndata: will save undups to {args.output_folder}")
+            print(f"|...>: will save undups to {args.output_folder}")
             onfile.cv_name_pairs_to_folder(deduppairs, args)
 
     if 1: #     data folder  ==>  dataset npy
         onrecord.folder_to_npy(args.data_dir, args.dataset_dir, im_size = clip[0], mss = (1024 ** 3))
         imgs = onrecord.npys_folder_to_rgbs(args.dataset_dir)
-        print(f"nndata: got imgs: {np.shape(imgs)}")
+        print(f"|...>: got imgs: {np.shape(imgs)}")
 #
-#   nntrain
 #
-def nntrain(args, kwargs):
+#   nnspace
+#
+def nnspace(args, kwargs):
 
     args = onutil.pargs(vars(args))
 
@@ -1653,65 +1687,68 @@ def nntrain(args, kwargs):
 
     onutil.ddict(vars(args), 'args')
 
-    print(f"|===> nntrain \n \
-                cwd: {os.getcwd()} \n \
-        \n ")
-
-    zfill = 4
-
-    tile = (int(512*2), int(512*2))
-    clip = (512, 512)
-    qslices = 4
-    eps = 0.9
-
-    latent_size = 512
-    im_size = 512
-    BATCH_SIZE = 4
-    mixed_prob = 0.9
-    qsteps = 200001
-
-    n_cycle = 500               # will evaluate model each
-    n_save = int(n_cycle / 1)   # will save model each
-    n_ref = n_cycle             # will identify model each
+    print(f'|===> {args.MNAME}:{args.PROJECT} \n \
+        data: {args.DATASET}) \n \
+        code: {args.GITPOD} \n \
+    ')
 
     if 1: # tree
         args.dataorg_dir=os.path.join(args.dataorg_dir, "")
-
-        # args.data_dir=os.path.join(args.gdata, args.DATASET + '_' + str(clip[0]) + '_' + str(clip[1]))   
         args.dataset_dir=os.path.join(args.proj_dir, "dataset")   
         args.models_dir=os.path.join(args.proj_dir, "Models")   
         args.results_dir=os.path.join(args.proj_dir, "Results")   
+        args.ani_dir=os.path.join(args.proj_dir, "ani")   
 
         os.makedirs(args.data_dir, exist_ok=True) # deduped formed
         os.makedirs(args.dataset_dir, exist_ok=True) # npy folder
         os.makedirs(args.models_dir, exist_ok=True)
         os.makedirs(args.results_dir, exist_ok=True)
-        os.makedirs(args.tmp_dir, exist_ok=True) # name raws
+        os.makedirs(args.ani_dir, exist_ok=True)
+        os.makedirs(args.tmp_dir, exist_ok=True) # name raws             
 
-    print(f"|===> nntrain \n \
-                dataorg (raw) => tmp (raw) => data (formed) => dataset (npy) \n \
-                cwd:  {os.getcwd()}, \n \
-                args.dataorg_dir: {args.dataorg_dir} \n \
-                args.data_dir: {args.data_dir} \n \
-                args.dataset_dir: {args.dataset_dir} \n \
-                args.models_dir: {args.models_dir} \n \
-                args.results_dir: {args.results_dir} \n \
-        \n ")
+    print(f"|===> tree \n \
+        dataorg (raw) => tmp (raw) => data (formed) => dataset (npy) \n \
+        cwd:  {os.getcwd()}, \n \
+        args.dataorg_dir: {args.dataorg_dir} \n \
+        args.data_dir: {args.data_dir} \n \
+        args.dataset_dir: {args.dataset_dir} \n \
+        args.models_dir: {args.models_dir} \n \
+        args.results_dir: {args.results_dir} \n \
+        args.ani_dir: {args.ani_dir} \n \
+    \n ")
 
-    print(f"|===> nntrain:  \n \
-                clip: {clip} \n \
-                latent_size: {latent_size} \n \
-                im_size: {im_size} \n \
-                BATCH_SIZE: {BATCH_SIZE} \n \
-                mixed_prob: {mixed_prob} \n \
-                qsteps: {qsteps} \n \
-                n_cycle: {n_cycle} \n \
-                n_save: {n_save} \n \
-                n_ref: {n_ref} \n \
+    if 1: # config
+        zfill = 4
+
+        tile = (int(512*2), int(512*2))
+        clip = (512, 512)
+        qslices = 4
+        eps = 0.9
+
+        latent_size = 512
+        im_size = 512
+        BATCH_SIZE = 4
+        mixed_prob = 0.9
+        qsteps = 200001
+
+        n_cycle = 500               # will evaluate model each
+        n_save = int(n_cycle / 1)   # will save model each
+        n_ref = n_cycle             # will identify model each
+
+        print(f"|===> config:  \n \
+            clip: {clip} \n \
+            latent_size: {latent_size} \n \
+            im_size: {im_size} \n \
+            BATCH_SIZE: {BATCH_SIZE} \n \
+            mixed_prob: {mixed_prob} \n \
+            qsteps: {qsteps} \n \
+            n_cycle: {n_cycle} \n \
+            n_save: {n_save} \n \
+            n_ref: {n_ref} \n \
         \n ")
 
     if 1: #     get model
-
+        print(f'|===> model')
         model = StyleGan2(lr = 0.0001, silent = False,
 
             latent_size = latent_size,
@@ -1733,277 +1770,62 @@ def nntrain(args, kwargs):
         )
 
     if 1: # train
+        print(f'|===> train')
         model.fit()
 
-    if 1: # evaluate
+    if 0: # evaluate
+        print(f'|===> evaluate')
         img = model.evaluate()
         onplot.pil_show_pil(img)
-#
-#   nntrunc
-#
-def nntrunc(args, kwargs):
 
-    args = onutil.pargs(vars(args))
-    onutil.ddict(vars(args), 'args')
-
-    print(f"|===> nntrunc:  \n \
-    ")
-
-    latent_size = 512
-    im_size = 512
-    BATCH_SIZE = 4
-    mixed_prob = 0.9
-    qsteps = 200001
-
-    n_cycle = 500               # will evaluate model each
-    n_save = int(n_cycle / 1)   # will save model each
-    n_ref = n_cycle             # will identify model each
-
-    if 1: # tree
-        args.dataorg_dir=os.path.join(args.dataorg_dir, "")
-
-        # args.data_dir=os.path.join(args.gdata, args.DATASET + '_' + str(clip[0]) + '_' + str(clip[1]))   
-        args.dataset_dir=os.path.join(args.proj_dir, "dataset")   
-        args.models_dir=os.path.join(args.proj_dir, "Models")   
-        args.results_dir=os.path.join(args.proj_dir, "Results")   
-        args.ani_dir=os.path.join(args.proj_dir, "ani")   
-
-        os.makedirs(args.data_dir, exist_ok=True) # deduped formed
-        os.makedirs(args.dataset_dir, exist_ok=True) # npy folder
-        os.makedirs(args.models_dir, exist_ok=True)
-        os.makedirs(args.results_dir, exist_ok=True)
-        os.makedirs(args.tmp_dir, exist_ok=True) # name raws
-        os.makedirs(args.ani_dir, exist_ok=True) # anis
-
-    if 1: #     get model
-
-        model = StyleGan2(lr = 0.0001, silent = False,
-
-            latent_size = latent_size,
-            im_size = im_size,
-            BATCH_SIZE = BATCH_SIZE,
-            mixed_prob = mixed_prob,
-            qsteps = qsteps,
-
-            n_cycle = n_cycle,
-            n_save = n_save,
-            n_ref = n_ref,
-
-            name = args.MNAME,
-            results_dir = args.results_dir,
-            models_dir = args.models_dir,
-            dataorg_dir = args.dataorg_dir,
-            data_dir = args.data_dir,
-            dataset_dir = args.dataset_dir,
-            ani_dir = args.ani_dir,
-            verbose = True,
-        )
-
-    if 1:  # truncate
+    if 1:  # truncate one
+        print(f'|===> truncate one')
         model.generateTruncated(trunc = 0.5, outImage = True, num = 0, qsegs=1)
 
-    if 1:  # frames truncate
+    if 0:  # truncate for frames
+        print(f'|===> truncate for frames')
         fps = 6 # 30
         maxTime = 5 # 30 # seconds
         nframes = int( maxTime*fps )               
         for i in range(nframes):
             imgs = model.generateTruncated(trunc = i / 50, outImage = True, num = i, qsegs=2)
 
-    if 1:  # ani create
-        onvid.folder_to_vid(args.results_dir, os.path.join(args.results_dir, "ani.gif"))
-
-    if 1:  # ani show
-        onvid.vid_show(os.path.join(args.results_dir, "ani.gif"))
-#
-#   nnwalk
-#
-def nnwalk(args, kwargs):
-
-    args = onutil.pargs(vars(args))
-    onutil.ddict(vars(args), 'args')
-
-    print(f"|===> nnwalk:  \n \
-    ")
-
-    latent_size = 512
-    im_size = 512
-    BATCH_SIZE = 4
-    mixed_prob = 0.9
-    qsteps = 200001
-
-    n_cycle = 500               # will evaluate model each
-    n_save = int(n_cycle / 1)   # will save model each
-    n_ref = n_cycle             # will identify model each
-
-    if 1: # tree
-        args.dataorg_dir=os.path.join(args.dataorg_dir, "")
-
-        # args.data_dir=os.path.join(args.gdata, args.DATASET + '_' + str(clip[0]) + '_' + str(clip[1]))   
-        args.dataset_dir=os.path.join(args.proj_dir, "dataset")   
-        args.models_dir=os.path.join(args.proj_dir, "Models")   
-        args.results_dir=os.path.join(args.proj_dir, "Results")   
-        args.ani_dir=os.path.join(args.proj_dir, "ani")   
-
-        os.makedirs(args.data_dir, exist_ok=True) # deduped formed
-        os.makedirs(args.dataset_dir, exist_ok=True) # npy folder
-        os.makedirs(args.models_dir, exist_ok=True)
-        os.makedirs(args.results_dir, exist_ok=True)
-        os.makedirs(args.tmp_dir, exist_ok=True) # name raws
-        os.makedirs(args.ani_dir, exist_ok=True) # anis
-
-    if 1: #     get model
-
-        model = StyleGan2(lr = 0.0001, silent = False,
-
-            latent_size = latent_size,
-            im_size = im_size,
-            BATCH_SIZE = BATCH_SIZE,
-            mixed_prob = mixed_prob,
-            qsteps = qsteps,
-
-            n_cycle = n_cycle,
-            n_save = n_save,
-            n_ref = n_ref,
-
-            name = args.MNAME,
-            results_dir = args.results_dir,
-            models_dir = args.models_dir,
-            dataorg_dir = args.dataorg_dir,
-            data_dir = args.data_dir,
-            dataset_dir = args.dataset_dir,
-            ani_dir = args.ani_dir,
-            verbose = True,
-        )
+    if 0:  # create ani video from frames
+        print(f'|===> create ani video from frames')
+        if 1:   # mp4
+            anivid_path = os.path.join(args.results_dir, "ani.mp4")
+        else:   # gif
+            anivid_path = os.path.join(args.results_dir, "ani.gif")
         
-    if 1: # create imgs
-        print(f"nnwalk create imgs in {args.ani_dir}")
-        imgs = model.generateWalk(qsegs=1, fps=20,maxTime=6,)
-        print(f"nnwalk got {len(imgs)} imgs")
+        vid = onvid.folder_to_mp4(args.results_dir, anivid_path,
+            save=True, plot=False, plotfile=True)
 
-    if 1: # create gif
+    if 0:  # create walk imgs
+        print(f'|===> create walk imgs')
+        imgs = model.generateWalk(qsegs=1, fps=20,maxTime=6,)
+        print(f"|... nnwalk got {len(imgs)} imgs")
+
+    if 0: # create ani gif
+        print(f'|===> create ani gif')
         dstpath = os.path.join(args.ani_dir, 'latent.gif')
-        ext='png'
-        onvid.folder_to_gif(args.ani_dir, dstpath, ext)
+        onvid.folder_to_gif(args.ani_dir, dstpath=dstpath, patts=['*.png'])
+
+    if 0: # show ani gif
+        print(f'|===> show ani gif')
+        dstpath = os.path.join(args.ani_dir, 'latent.gif')
         onvid.vid_show(dstpath)
 
-    # # creating random latent vector
-    # seed = 96
-    # rnd = np.random.RandomState(seed)
-    # z = rnd.randn(4, 512).astype('float32')
-    # print(f"z: {np.shape(z)}")
+    if 0: # _e_
+        # creating random latent vector
+        seed = 96
+        rnd = np.random.RandomState(seed)
+        z = rnd.randn(4, 512).astype('float32')
+        print(f"|===> z: {np.shape(z)}") # z: (4, 512)
 
-    # # # running network
-    # # # out = generator([z, None]) # _e_
-    # # out = model.G(z) # _e_
-    # # print(f"out: {np.shape(out)}")
-
-    # #converting image to uint8
-    # out_image = onrosa.convert_images_to_uint8(out, nchw_to_nhwc=True, uint8_cast=True)
-
-    # onfile.generate_and_save_images(out_image.numpy(), 0)
-
-    # n_images = 500
-
-    # for i in tqdm(range(n_images)):
-    #     onfile.generate_and_save_images(out_image.numpy(), i, plot_fig=False)
-        
-    #     #moving randomly in the latent space z
-    #     seed = i
-    #     rnd = np.random.RandomState(seed)
-        
-    #     #mofying slightly latent vector and generating new images
-    #     z += rnd.randn(4, 512).astype('float32') / 40
-    #     out = generator([z, None]) # _e_
-    #     out_image = onrosa.convert_images_to_uint8(out, nchw_to_nhwc=True, uint8_cast=True)
-#
-#   nnproj
-#
-def nnproj(args, kwargs):
-
-    args = onutil.pargs(vars(args))
-
-    args.PROJECT = 'ffhq'
-    args.DATASET = 'ffhq'
-    
-    xp = getxp(vars(args))
-    args = onutil.pargs(xp)
-
-    onutil.ddict(vars(args), 'args')
-
-    print(f"|===> nnproj\n \
-                cwd: {os.getcwd()} \n \
-        \n ")
-
-    if 1: # tree
-        args.dataorg_dir=os.path.join(args.dataorg_dir, "")
-
-        args.dataset_dir=os.path.join(args.proj_dir, "dataset")   
-        args.models_dir=os.path.join(args.proj_dir, "Models")   
-        args.results_dir=os.path.join(args.proj_dir, "Results")   
-        args.ani_dir=os.path.join(args.proj_dir, "ani")   
-
-        os.makedirs(args.data_dir, exist_ok=True) # deduped formed
-        os.makedirs(args.dataset_dir, exist_ok=True) # npy folder
-        os.makedirs(args.models_dir, exist_ok=True)
-        os.makedirs(args.results_dir, exist_ok=True)
-        os.makedirs(args.tmp_dir, exist_ok=True) # name raws
-        os.makedirs(args.ani_dir, exist_ok=True) # anis
-
-    if 1: #     get model
-        latent_size = 512
-        im_size = 512
-        BATCH_SIZE = 4
-        mixed_prob = 0.9
-        qsteps = 200001
-
-        n_cycle = 500               # will evaluate model each
-        n_save = int(n_cycle / 1)   # will save model each
-        n_ref = n_cycle             # will identify model each
-
-        model = StyleGan2(lr = 0.0001, silent = False,
-
-            latent_size = latent_size,
-            im_size = im_size,
-            BATCH_SIZE = BATCH_SIZE,
-            mixed_prob = mixed_prob,
-            qsteps = qsteps,
-
-            n_cycle = n_cycle,
-            n_save = n_save,
-            n_ref = n_ref,
-
-            name = args.MNAME,
-            results_dir = args.results_dir,
-            models_dir = args.models_dir,
-            dataorg_dir = args.dataorg_dir,
-            data_dir = args.data_dir,
-            dataset_dir = args.dataset_dir,
-        )
-
-    if 1:
-        dataset = DatasetLoader(
-            path_dir = args.data_dir, 
-            resolution = 1024, 
-            batch_size = args.batch_size, 
-            cache_file=True
-        )
-        for i in range(2):
-            print(i)
-            imgs = dataset.get_batch() # (4, 3, 256, 256)
-            print(f"{i} {np.shape(imgs)}")
-
-    #   stylegan2-ffhq-config-f.pkl	StyleGAN2 for FFHQ dataset at 1024×1024
-    #   vgg16_zhang_perceptual.pkl	Standard LPIPS metric to estimate perceptual similarity.
-
-    # print('Projecting image "%s"...' % os.path.basename(src_file))
-    # images, _labels = dataset_obj.get_minibatch_np(1)
-
-    prj = Projector(
-        verbose=True,
-        im_size=512,
-    )
-    prj._info()
-    prj.set_network(model.G)
+        # running network
+        #out = generator([z, None]) # _e_
+        out = model.G(z) # _e_
+        print(f"out: {np.shape(out)}")
 #
 #
 #

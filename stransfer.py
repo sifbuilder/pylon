@@ -136,6 +136,8 @@ def getap():
         "GITPOD": "neural-style-tf",      
         "DATASET": "styler",        
     
+        "TRAIN": 1,              # train model
+
         "RESETCODE": 0,
         "LOCALDATA": 0,
         "LOCALMODELS": 0,
@@ -329,7 +331,7 @@ def get_content_frame(frame, args):
     # img = read_image(path_to_img)
 
     path = os.path.join(args.video_input_dir, frame_name)
-    img = onfile.path_to_tnua_with_tf(path, args)
+    img = onfile.path_to_tnua_tf(path, args)
     return img
 #
 def _get_style_images(content_img, args=None):
@@ -515,7 +517,7 @@ def get_prev_frame(frame, args=None):
     # img = cv2.imread(path, cv2.IMREAD_COLOR)
     # check_file(img, path)
 
-    img = onfile.path_cv_pil(path)
+    img = onfile.path_to_pil_cv(path)
     img = onformat.pil_to_dnua(img)
 
     return img
@@ -537,18 +539,6 @@ def get_prev_warped_frame(frame, args=None):
     warped_img = warp_image(prev_img, flow).astype(np.float32)
     img = onvgg.vgg_preprocess(warped_img)
     return img
-#
-def get_content_weights(frame, prev_frame, args=None):
-    video_input_dir=args.video_input_dir
-    content_weights_frmt = args.content_weights_frmt
-
-    forward_fn = content_weights_frmt.format(str(prev_frame), str(frame))
-    backward_fn = content_weights_frmt.format(str(frame), str(prev_frame))
-    forward_path = os.path.join(video_input_dir, forward_fn)
-    backward_path = os.path.join(video_input_dir, backward_fn)
-    forward_weights = read_weights_file(forward_path)
-    backward_weights = read_weights_file(backward_path)
-    return forward_weights #, backward_weights
 #
 def warp_image(src, flow):
     _, h, w = flow.shape
@@ -612,17 +602,17 @@ def write_image_output(output_img,
     # save result image
     img_file = f'output_'+str(epoch).zfill(args.zfill)+'.png'
     img_path = os.path.join(args.img_output_dir, img_file)
-    onfile.pil_to_file_with_cv(img_path, output_img)
+    onfile.pil_to_file_cv(img_path, output_img)
 
     # save content image
     content_file = f'content.jpg'
     content_path = os.path.join(args.img_output_dir, content_file)
-    onfile.pil_to_file_with_cv(content_path, content_img)
+    onfile.pil_to_file_cv(content_path, content_img)
 
     # save input image
     init_file = f'init.jpg'
     init_path = os.path.join(args.img_output_dir, init_file)
-    onfile.pil_to_file_with_cv(init_path, input_img)
+    onfile.pil_to_file_cv(init_path, input_img)
 
     style_files = []
     style_paths = []
@@ -632,7 +622,7 @@ def write_image_output(output_img,
         style_files.append(f'style_{str(i)}.png')
         style_paths.append(os.path.join(args.img_output_dir, style_files[i]))
         path = style_paths[i]
-        onfile.pil_to_file_with_cv(path, style_img)
+        onfile.pil_to_file_cv(path, style_img)
 
     # save the configuration settings
     out_file = os.path.join(args.img_output_dir, 'meta_data.txt')
@@ -684,11 +674,14 @@ def read_weights_file(path):
     weights = np.dstack([vals.astype(np.float32)] * 3)
     return weights
 #
-def get_content_weights(frame, prev_frame):
+def get_content_weights(frame, prev_frame, args=None):
 
     content_weights_frmt = 'reliable_{}_{}.txt' # args.content_weights_frmt
     video_input_dir = './video_input' # args.video_input_dir
 
+    content_weights_frmt = args.content_weights_frmt
+    video_input_dir=args.video_input_dir
+    
     forward_fn = content_weights_frmt.format(str(prev_frame), str(frame))
     backward_fn = content_weights_frmt.format(str(frame), str(prev_frame))
     forward_path = os.path.join(video_input_dir, forward_fn)
@@ -823,7 +816,7 @@ def sum_style_losses(net, combo, style_imgs, args=None):
     return total_style_loss
 #
 def sum_content_losses(net, combo, content_img, args=None):
-    if v
+    if args.verbose > 0:
         print(f'|---> sum_content_losses')     
     # net['input'].assign(content_img)
     content_loss = 0.
@@ -1150,8 +1143,10 @@ class GAN(tf.keras.models.Model):
         img = self.image # <class 'tensorflow.python.ops.resource_variable_ops.ResourceVariable'>
         img = onformat.nua_to_pil(img)
         img.show()
- 
-
+    #
+    #
+    #   train_step
+    #
     # @tf.function
     def train_step(self, image, content_img, style_imgs, args = None):
         net = self.net
@@ -1194,7 +1189,9 @@ class GAN(tf.keras.models.Model):
         self.optimizer.apply_gradients([(grad, image)])
         image.assign(clip_0_1(image))
         self.image = image
-
+    #
+    #
+    #   fit
     #
     def fit(self, input_img, content_img, style_imgs, 
             frame = None,
@@ -1292,7 +1289,7 @@ class GAN(tf.keras.models.Model):
             # write image per epoch
             img_name = image_epoch_format.format(str(epoch).zfill(zfill))        
             img_path = os.path.join(img_output_dir, img_name)
-            #onfile.pil_to_file_with_cv(img_path, self.image)
+            #onfile.pil_to_file_cv(img_path, self.image)
 
             if 1: # write image per epoch
                 write_image_output(
@@ -1309,15 +1306,17 @@ class GAN(tf.keras.models.Model):
                     print(f'|---> pil combo_img epoch: {epoch}')
                 onplot.pil_show_nua(self.image)
 
+        end = time.time()
+        print()
+        print("|...> Total time: {:.1f}".format(end-start))
+
         if video:
             frame_name = args.frame_content_frmt.format(str(frame).zfill(zfill))
             outpath_path = os.path.join(video_styled_dir, frame_name) # styled
             print(f"|...> fit save frame to {outpath_path} on epoch {epoch}")
             output_img = onformat.nua_to_pil(image)
-            onfile.pil_to_file_with_cv(outpath_path, output_img)
+            onfile.pil_to_file_cv(outpath_path, output_img)
 
-        end = time.time()
-        print("Total time: {:.1f}".format(end-start))
 #
 #
 #   CMDS
@@ -1482,7 +1481,7 @@ def nnimg(args, kwargs):
 
         assert os.path.exists(content_img_path), f"content image {content_img_path} does not exist"
 
-        img = onfile.path_cv_pil(content_img_path)
+        img = onfile.path_to_pil_cv(content_img_path)
         img = ondata.pil_resize(img, ps=args.content_size)
         img = onformat.pil_to_dnua(img)
         print(f"|===> nnimg: content \n \
@@ -1493,17 +1492,17 @@ def nnimg(args, kwargs):
         content_img = img
 
     if args.visual > 1: # show content image
-        print(f'|---> pil content img')
+        print(f'|...> pil content img')
         onplot.pil_show_nua(content_img) # non interrupt
 
     if args.visual > 1:# show content image from path
-        print(f'|---> cv content img')
+        print(f'|...> cv content img')
         content_img_path = os.path.join(args.content_imgs_dir, args.content_img_file)
         onplot.cv_path(content_img_path, size = 512, title='content img', wait=2000)
 
     if 1: #   input image: (422, 512, 3) <class 'numpy.ndarray'> [[[ 99 165 160]
         init_path = os.path.join(args.init_img_dir, args.init_img_name)
-        init_image = onfile.path_to_tnua_with_tf(init_path, args)
+        init_image = onfile.path_to_tnua_tf(init_path, args)
         print(f"|===> nnimg: init \n \
             init_path: {init_path} \n \
             args.content_imgs_dir: {args.content_imgs_dir} \n \
@@ -1511,7 +1510,7 @@ def nnimg(args, kwargs):
         ")
 
         if args.visual > 1:
-            print(f'|---> vis init')
+            print(f'|...> vis init')
             onplot.pil_show_nua(init_image, "[   .   ] init_image")
 
     if 1: #   style images
@@ -1528,7 +1527,7 @@ def nnimg(args, kwargs):
                 topath = os.path.join(args.style_imgs_dir, file_name)
                 tofile = tf.keras.utils.get_file(f'{topath}', origin=url, extract=True)
 
-        style_imgs = onfile.names_to_nuas_with_tf(args.style_imgs_files, args.style_imgs_dir, args)
+        style_imgs = onfile.names_to_nuas_tf(args.style_imgs_files, args.style_imgs_dir, args)
         print(f"|===> nnimg: styles \n \
             args.style_imgs_files: {args.style_imgs_files} \n \
             args.style_imgs_dir: {args.style_imgs_dir} \n \
@@ -1536,7 +1535,7 @@ def nnimg(args, kwargs):
         ")
 
         if args.visual > 1:
-            print(f'|---> vis styles')
+            print(f'|...> vis styles')
             onplot.pil_show_nuas(style_imgs, ["[   .   ] style_imgs"])
 
     if 1: #   mask style images
@@ -1592,11 +1591,12 @@ def nnimg(args, kwargs):
                                 visual=1, verbose=1)                        
 
                         args.style_mask = 1
+
             args.style_mask = 1
             args.style_mask_imgs = args.style_mask_imgs_files
 
         if args.style_mask: # _e_
-            style_mask_imgs = onfile.names_to_nuas_with_tf(args.style_mask_imgs_files, args.style_imgs_dir, args,)
+            style_mask_imgs = onfile.names_to_nuas_tf(args.style_mask_imgs_files, args.style_imgs_dir, args,)
             print(f"|===> nnimg: masks \n \
                 args.style_mask_imgs_files: {args.style_mask_imgs_files} \n \
                 args.style_imgs_dir: {args.style_imgs_dir} \n \
@@ -1656,6 +1656,7 @@ def nnimg(args, kwargs):
             args.video_input_dir, 
             args.video_output_dir, 
             args.frame_content_frmt,
+            args=args
         )
 
         input_img = onformat.tnua_resize(input_img, args.max_size, args.max_size)
@@ -1735,13 +1736,16 @@ def nnani(args, kwargs):
     xp = getxp(vars(args))
     args = onutil.pargs(xp)    
     onutil.ddict(vars(args), 'args')
-
-    if 1: # config
+    #
+    #
+    #   config
+    #
+    if 1:
         args.frame_start = 0
         args.frame_end = -1 # num_frames
         args.video = True 
 
-    print(f"|===> nnani config \n \
+    if args.verbose > 0: print(f"|===> nnani config \n \
         args.video: {args.video} \n \
         args.visual: {args.visual} \n \
         args.frame_first_iterations: {args.frame_first_iterations} \n \
@@ -1749,8 +1753,11 @@ def nnani(args, kwargs):
         args.max_iterations: {args.max_iterations} \n \
         args.style_imgs_files = {args.style_imgs_files} \n \
     ")
-
-    if 1: # tree
+    #
+    #
+    #   tree
+    #
+    if 1:
 
         extension=os.path.splitext(os.path.basename(args.video_file))[1]
 
@@ -1772,7 +1779,7 @@ def nnani(args, kwargs):
         args.init_img_dir = args.data_dir
         args.style_imgs_dir = args.data_dir
 
-        print(f'|===> nnani tree \n \
+        if args.verbose > 0: print(f'|===> nnani tree \n \
             cwd: {os.getcwd()} \n \
             args.video_file: {args.video_file} \n \
             content_filename: {content_filename} \n \
@@ -1794,26 +1801,31 @@ def nnani(args, kwargs):
         os.makedirs(args.img_output_dir, exist_ok=True)
 
         if not args.video_input_path: # try
-            urlfolder = 'https://github.com/sifbuilder/eodoes/blob/master/packages/eodoes-eodo-nnstransfer/datasrc/'
+            urlfolder = 'https://github.com/sifbuilder/eodoes/blob/master/packages/eodoes-eodo-nnstransfer/media/'
             url = f'{urlfolder}{args.video_file}'
             topath = args.video_input_path # os.path.join(args.dataorg_dir, f'{args.video_file}')
 
-            print(f"|===> nnani: video src does not exist\n \
+            if args.verbose > 0: print(f"|===> nnani: video src does not exist\n \
                 urlfolder: {urlfolder} \n \
                 url: {url} \n \
                 topath: {topath} \n \
             ")
             tofile = tf.keras.utils.get_file(f'{topath}', origin=url, extract=True)
         assert os.path.exists(args.video_input_path), f'input vide {args.video_input_path} does not exist'
-
-
-    if 1: # git
+    #
+    #
+    #   git
+    #
+    if 1:
         onutil.get_git(args.AUTHOR, args.GITPOD, args.code_dir)
 
     assert os.path.exists(args.code_dir), "code_dir not found"        
     os.chdir(args.code_dir) # _e_ not std
-
-    if 1: # vid => frames
+    #
+    #
+    #   extract vid => frames
+    #
+    if 1:
         if 1:
             print(f'|===> nnani vid to frames \n \
                 args.video_input_path: {args.video_input_path} \n \
@@ -1825,8 +1837,11 @@ def nnani(args, kwargs):
             cmd = f'ffmpeg -v quiet -i "{args.video_input_path}" "{args.video_frames_dir}/{frame_pattern}"'
             print(f"cmd: {cmd}")
             os.system(cmd)            
-
-    if 0: # frames size
+    #
+    #
+    #   frames size
+    #
+    if 0:
         ppm = os.path.join(args.video_frames_dir, 'frame0000.jpg')
         im = Image.open(ppm)
         width, height = im.size   
@@ -1835,8 +1850,11 @@ def nnani(args, kwargs):
         print(f"|===> nnani frame size \n \
             max_size: {max_size} \n \
         ")
-
-    if 1: # video
+    #
+    #
+    #   video
+    #
+    if 1:
 
         num_frames = len([name for name in os.listdir(args.video_frames_dir) if os.path.isfile(os.path.join(args.video_frames_dir, name))])
         args.frame_end = num_frames
@@ -1866,13 +1884,16 @@ def nnani(args, kwargs):
         args.frame_name: {args.frame_name} \n \
         args.frame_img_path: {args.frame_img_path} \n \
     ")
-
-    if 1: # content
+    #
+    #
+    #   content
+    #
+    if 1:
         print(f'|===> get content  \n \
             cwd: {os.getcwd()} \n \
             content_frame: {args.frame_img_path} \n \
         ')                
-        img = onfile.path_cv_pil(args.frame_img_path)
+        img = onfile.path_to_pil_cv(args.frame_img_path)
         img = ondata.pil_resize(img, ps=args.content_size)
         img = onformat.pil_to_dnua(img)
         print(f'|===> nnani: content \n \
@@ -1883,8 +1904,11 @@ def nnani(args, kwargs):
         content_frame = img
         if args.visual > 1:
             onplot.pil_show_nua(content_frame)
-
-    if 1: #   style images
+    #
+    #
+    #   style images
+    #
+    if 1:
 
         style_img_paths = [os.path.join(args.style_imgs_dir, item) for item in args.style_imgs_files]
         for style_img_path in style_img_paths:
@@ -1894,7 +1918,7 @@ def nnani(args, kwargs):
 
                 base_path = style_img_path
                 base_file = os.path.basename(style_img_path)
-                urlfolder = 'https://raw.githubusercontent.com/sifbuilder/eodoes/master/packages/eodoes-eodo-eonart/img/'
+                urlfolder = 'https://raw.githubusercontent.com/sifbuilder/eodoes/master/packages/eodoes-eodo-nnstransfer/media/'
                 url = f'{urlfolder}{base_file}'
 
                 print(f"|===> nnimg: get style base file \n \
@@ -1909,7 +1933,7 @@ def nnani(args, kwargs):
                 base_file = os.path.basename(style_img_path)
                 print(f"|===> style file {base_file} already in {args.style_imgs_dir}")        
 
-        style_imgs = onfile.names_to_nuas_with_tf(args.style_imgs_files, args.style_imgs_dir, args,)
+        style_imgs = onfile.names_to_nuas_tf(args.style_imgs_files, args.style_imgs_dir, args,)
         print(f'|===> nnani: styles \n \
             args.style_imgs_files: {args.style_imgs_files} \n \
             args.style_imgs_dir: {args.style_imgs_dir} \n \
@@ -1918,8 +1942,11 @@ def nnani(args, kwargs):
         if 0 and args.visual:
             print(f'|---> vis styles')
             onplot.pil_show_nuas(style_imgs, ['[   .   ] style_imgs'])
-
-    if 1: # input shape
+    #
+    #
+    #   input shape
+    #
+    if 1:
         print(f'|===> input shape  \n \
             cwd: {os.getcwd()} \n \
             args.video: {args.video} \n \
@@ -1948,8 +1975,11 @@ def nnani(args, kwargs):
         args.frame_start/frame_end: ({num_frames}) {args.frame_start} : {args.frame_end} \n \
         args.input_img shape: {np.shape(input_img)} \n \
     ')
-
-    if 1: # model
+    #
+    #
+    #   model
+    #
+    if 1:
 
         b,w,h,c = np.shape(input_img)
         input_shape = (w,h,c)   
@@ -1961,8 +1991,11 @@ def nnani(args, kwargs):
             args.img_output_dir: {args.img_output_dir} \n \
         ")
         model = GAN(input_shape = input_shape, args = args,)
-
-    if 1: # fit
+    #
+    #
+    #   train
+    #
+    if args.TRAIN > 0:
 
         print(f'|===> nnani fit \n \
             cwd: {os.getcwd()} \n \
@@ -2007,8 +2040,11 @@ def nnani(args, kwargs):
                 frame = frame,                
                 args = args,
             )
-
-    if 1: # render stylized video
+    #
+    #
+    #   render stylized video
+    #
+    if 1:
         
         os.chdir(args.code_dir) # _e_ not std
 
@@ -2026,8 +2062,11 @@ def nnani(args, kwargs):
         --verbose'
         print(cmd)
         os.system(cmd)
-
-    if 1: # gen gif video
+    #
+    #
+    #   gen gif video
+    #
+    if 1:
 
         fps = 6
         maxTime = 9 # seconds
@@ -2049,8 +2088,11 @@ def nnani(args, kwargs):
         ')
 
         onvid.folder_to_gif(args.video_styled_dir, gif_output_path)
-#                
-    if 1: # gen mp4 video
+    #
+    #
+    #   gen mp4 video
+    #           
+    if 1:
 
         fps = 6
         maxTime = 9 # seconds
@@ -2071,7 +2113,25 @@ def nnani(args, kwargs):
             to video_output_path: {video_output_path} \n \
         ')
 
-        onvid.frames_to_video(args.video_styled_dir, video_output_path, fps)
+        onvid.frames_to_video(
+            args.video_styled_dir, 
+            video_output_path, 
+            fps
+        )
+#
+#
+#   nninfo
+#   
+def nninfo(args, kwargs):
+
+    args = onutil.pargs(vars(args))
+    onutil.ddict(vars(args), 'args')
+
+    print(f'|---> stransfer:  \n \
+    ref: https://github.com/ProGamerGov/neural-style-pt \n \
+    nnimg: style transform of img \n \
+    nnani: style transform of vid \n \
+    ')        
 #
 #
 #

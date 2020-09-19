@@ -98,7 +98,7 @@ if 1: # get base.py from github
         print(f"|===> base in cwd {cwd}")
 #
 #
-#   FUNS
+#   IMPS
 #
 #
 # check if base.Onpyon is defined
@@ -344,7 +344,7 @@ def nnmodel(args, kwargs):
         local_tar_path = os.path.join(args.proj_dir, 'models.zip')
         url = 'https://github.com/microsoft/ConfigNet/releases/download/v1.0.0/models.zip'
         if not os.path.exists(local_tar_path):
-            print(f'|... urlretrieve: {url} to {args.local_tar_path}')
+            print(f'|... urlretrieve: {url} to {local_tar_path}')
             filename, headers = urllib.request.urlretrieve(url, filename=local_tar_path)
 
         if os.listdir(args.models_dir) == 0:

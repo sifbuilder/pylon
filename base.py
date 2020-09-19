@@ -305,6 +305,18 @@ class Onutil:
         cmd = f'pip install azureml-sdk matplotlib numpy opencv-python pytest transformations'
         os.system(cmd)
 
+        # ## pepe
+        cmd = f'pip install ipywidgets coloredlogs watchdog'
+        os.system(cmd)        
+
+        # ## l4rz
+        cmd = f'pip install torchvision'
+        os.system(cmd)        
+
+        # ## pbaylies
+        cmd = f'pip install -U git+git://github.com/lilohuang/PyTurboJPEG.git'
+        os.system(cmd)        
+
     @staticmethod
     def pargs(cp):
         xp={}        
@@ -442,6 +454,7 @@ class Onutil:
         #urlfolder = 'https://drive.google.com/drive/folders/'
         #gfolderid = '1ihLt6P7UQRlaFtZUEclXkWC9grmEXEUK'
         #dst = 'DanbooRegion2020.zip.xxx' # 001 - 077
+        #onutil.gdownid(urlfolder, gid, args.data_dir) 
         url = f'{urlfolder}{gfolderid}'
         gdown.download(url, dst)		
 
@@ -452,15 +465,23 @@ class Onutil:
         gdd.download_file_from_google_drive(file_id=link_name,dest_path=dest,unzip=True)
 
     @staticmethod
-    def netget(urlpath, localpath, args=None):
+    def uriget(urlpath, localpath, args=None):
         basedir = os.path.dirname(urlpath)
-        baseurl = os.path.file(urlpath)
+        baseurl = os.path.basename(urlpath)
         localdir = os.path.dirname(localpath)
-        localfile = os.path.file(localpath)
+        localfile = os.path.basename(localpath)
         tofile = tf.keras.utils.get_file(f'{localpath}', origin=urlpath, extract=True)
 
     @staticmethod
     def tenzip(output_filename, source_dir, arcname=None):
+        # eg:
+        #tarfile = os.path.join(args.data_dir, 'test.gz') # <=
+        #if not os.path.exists(tarfile):
+        #    tarfolder = os.path.join(args.data_dir, dats[0])
+        #    print(f'|===> create zip from {tarfolder} folder onto {tarfile}')
+        #    onutil.tenzip(tarfile, tarfolder)
+        #else:
+        #    print(f'|===> tar file {tarfile} already exists')        
         import tarfile
         with tarfile.open(output_filename, "w:gz") as tar:
             tar.add(source_dir, arcname=arcname)
@@ -520,6 +541,7 @@ class Onutil:
 
         zipf.close()
 
+    @staticmethod
     def mnormal(mu=0.0, sigma=1.0, size=None):
         return np.random.normal(loc = mu, scale = sigma, size = size).astype('float32')
 
@@ -544,7 +566,6 @@ class Onutil:
     @staticmethod
     def get_rootid(path):
         return Onutil.get_rootname(Onutil.get_filename(path))
-
 
 # https://github.com/rolux/stylegan2encoder/dnnlib/util.py
 class EasyDict(dict):
@@ -630,8 +651,13 @@ class Onplot:
         print("Plot")
 
     @staticmethod   
+    def display_path(path):
+        from IPython.display import Image, display        
+        display(Image(path))
+
+    @staticmethod   
     def display_pil(img):
-        display.display(PIL.Image.fromarray(np.array(img)))
+        display(PIL.Image.fromarray(np.array(img)))
 
     @staticmethod
     def pil_show_pil(img, title=""):
@@ -653,14 +679,25 @@ class Onplot:
         rgbs=Onformat.nuas_to_rgbs(nuas)
         Onplot.pil_show_rgbs(rgbs, scale=1, rows=1)
 
-    @staticmethod   
-    def pil_show_nba(img, title=""):
-        img = np.asarray(img)        
-        img = Onformat.nba_to_nua(img)
-        img = Onformat.nua_to_rgb(img)
+    #@staticmethod   
+    #def pil_show_nba(img, title=""):
+    #    img = np.asarray(img)        
+    #    img = Onformat.nba_to_nua(img)
+    #    img = Onformat.nua_to_rgb(img)
+    #    img = PIL.Image.fromarray(img)
+    #    Onplot.pil_show_pil(img, title)
+
+    @staticmethod
+    def pil_show_nba(img, title="img"):
+        if len(img.shape) > 3:
+            assert img.shape[0] == 1
+            img = tf.squeeze(img, axis=0)  # img = img[0,...] # bnbt => nba    
+        img = (img + 1.0)/2.0
+        img = np.array(255 * img, dtype=np.uint8)
         img = PIL.Image.fromarray(img)
-        Onplot.pil_show_pil(img, title)
-     
+        img if Onutil.incolab() else img.show(title=title)
+        return img
+
     @staticmethod   
     def pil_show_nbas(nbas, title=[]):
         for nba in nbas:
@@ -671,7 +708,7 @@ class Onplot:
         img = np.asarray(img)  
         if len(img.shape) > 3: img = tf.squeeze(img, axis=0)  # img = img[0,...]            
         img = Onformat.rgb_to_pil(img)
-        Onplot.pil_show_pil(img, title)
+        Onplot.pil_show_pil(img, title) 
 
     @staticmethod
     def pil_show_rgbs(rgbs, scale=1, rows=1):
@@ -679,6 +716,7 @@ class Onplot:
         for img in rgbs:
             if len(img.shape) > 3: img = tf.squeeze(img, axis=0)  # img = img[0,...]
             pils.append(PIL.Image.fromarray(np.array(img, dtype=np.uint8)))
+
         w,h = pils[0].size
         w = int(w*scale)
         h = int(h*scale)
@@ -692,19 +730,45 @@ class Onplot:
         Onplot.pil_show_pil(pil)
 
     @staticmethod
-    def pil_show_nba(img, title="img"):
-        if len(img.shape) > 3:
-            assert img.shape[0] == 1
-            img = tf.squeeze(img, axis=0)  # img = img[0,...] # bnbt => nba    
-        img = (img + 1.0)/2.0
-        img = np.array(255 * img, dtype=np.uint8)
-        img = PIL.Image.fromarray(img)
-        img if Onutil.incolab() else img.show(title=title)
-        return img
+    #figsize:(float, float), (default: [6.4, 4.8]), Width, height in inches
+    #facecolor: (color), (default: 'white'), The background color
+    #tight_layout: (bool or dict), (default: False), adjust subplot parameters
+    #constrained_layout: (bool or dict), (default: False), flexible layout
+
+    def paths_to_grid_plt(paths, rows=2, w=6.0, h=4.0, topath=None):
+        n_images = len(paths)  
+
+        imgs = []
+        cols = np.ceil(n_images / rows)
+
+        # 1x1: 6x4
+        # 2x2: 6x4
+        # 2x3: 6x3
+
+        h = 3
+        print("paths_to_grid_plt ", rows, cols, w, h)
+        figsize = (w, h)
+
+        fig = plt.figure(figsize=figsize,facecolor='black',)
+        fig.set_constrained_layout(True)
+        for idx, image_path in enumerate(paths):
+            ax = fig.add_subplot(rows, cols, idx + 1)
+            img = Image.open(image_path).convert("RGB")
+            #print(idx, img.size)
+            imgs.append(img)
+            ax.grid(False)
+            ax.set_xticks([])
+            ax.set_yticks([])
+            ax.imshow(img)
+        if topath:
+            fig.savefig(topath)
+        fig.set_constrained_layout_pads(w_pad=0.1/72, h_pad=0.1/72, hspace=0, wspace=0)
+        plt.show()
 
     @staticmethod
-    def plot_pils_grid(imgs, rows=2, cols=2, figsize=(4, 4)):
+    def plot_grid_pils(imgs, rows=2, cols=2, figsize=(4, 4)):
         qtiles = cols * rows
+        assert (len(imgs) >= qtiles)
         plt.figure(figsize=figsize)
         for i in range(qtiles):
             plt.subplot(rows, cols, i+1)
@@ -712,7 +776,6 @@ class Onplot:
             plt.axis('off')
         plt.show()
  
-
     #https://stackoverflow.com/questions/53255432/saving-a-grid-of-heterogenous-images-in-python
     @staticmethod
     def plot_save_grid(ims, path=None, rows=None, cols=None, 
@@ -794,10 +857,7 @@ class Onplot:
 
                 images.append(img)
 
-
         Onplot.plot_save_grid(images, path, rows, cols,do=['plot', 'save'])
-
-
 
     @staticmethod   
     def plot_nuas(imgs=[], r=1, c=1, titles=[]):
@@ -824,8 +884,8 @@ class Onplot:
         imgs = []
         for i in range(qtiles):
             idx =  i if i < qimgs else qimgs -1
-            imgs.append(Image.open(img_paths[idx]))
-        Onplot.plot_pils_grid(imgs, rows, cols)
+            imgs.append(Image.open(img_paths[idx])) # pils
+        Onplot.plot_grid_pils(imgs, rows, cols)
 
     @staticmethod
     def plot_names(names=[], dir="./", rows=1, cols=1):
@@ -843,20 +903,29 @@ class Onplot:
 
     @staticmethod   
     def plot_nua(nua, title=None):
+        if len(nua.shape) > 3:
+            assert nua.shape[0] == 1
+            nua = tf.squeeze(nua, axis=0)
+
         plt.imshow(nua)
         if title:
             plt.title(title)
         plt.show()
 
     @staticmethod   
-    def plot_dnua(tnua, title=None):
+    def plot_nnua(tnua, title=None):
         nua = Onformat.dnua_to_nua(tnua)
         Onplot.plot_nua(nua, title)
 
     @staticmethod   
     def plot_rgb(img, title=None):
-        rgb = np.array(img, dtype=np.uint8)
-        plt.imshow(rgb)
+        #img = np.array(img, dtype=np.uint8)
+
+        if np.ndim(img)>3:
+            assert img.shape[0] == 1, f'multi img set'
+            img = img[0]  
+
+        plt.imshow(img)
         if title:
             plt.title(title)
         plt.show() 
@@ -904,7 +973,7 @@ class Onplot:
             thumb_shape = [int(scale*j) for j in im.size]
             im.thumbnail(thumb_shape, PIL.Image.ANTIALIAS)
             data_thumb = np.array(im)
-            grid[i].plot_dnua(data_thumb)
+            grid[i].plot_nnua(data_thumb)
 
             # Turn off axes:
             grid[i].axes.get_xaxis().set_visible(False)
@@ -912,16 +981,25 @@ class Onplot:
 
 
     @staticmethod   
-    def generate_and_plot_images(gen, seed, w_avg, truncation_psi=1):
+    def gen_plot_rgbs(gen, 
+            seed, 
+            w_avg, 
+            truncation_psi=1,
+            qimgs = 3,
+            rows = 1,
+            batch_size = 1,
+            latent_size = 512,
+            figsize = (15,15),
+        ):
         # https://github.com/rosasalberto/StyleGAN2-TensorFlow-2.x
-        """ plot images from generator output """
+        print(f"|===> gen_plot_rgbs  plot images from generator output")
         
-        fig, ax = plt.subplots(1,3,figsize=(15,15))
-        for i in range(3):
+        fig, ax = plt.subplots(rows,qimgs,figsize=figsize)
+        for i in range(qimgs):
             
             # creating random latent vector
             rnd = np.random.RandomState(seed)
-            z = rnd.randn(1, 512).astype('float32')
+            z = rnd.randn(batch_size, latent_size).astype('float32')
 
             # running mapping network
             dlatents = gen.mapping_network(z)
@@ -936,7 +1014,7 @@ class Onplot:
             #plotting images
             # ax[i].axis('off')
             # img_plot = ax[i].imshow(img.numpy()[0])
-            print(f"plot img {i}: {type(img)} : {np.shape(img)}")
+            print(f"|...> gen_plot_rgbs plot img {i}: {type(img)} : {np.shape(img)}")
             Onplot.pil_show_rgb(img)
 
             seed += 1
@@ -983,7 +1061,6 @@ class Onplot:
         cv2.imshow(title, img) # keep open per wait
         cv2.waitKey(wait)
 
-
     @staticmethod  
     def cv_resize(img, max_size= None, dim=None):
         if max_size:
@@ -997,13 +1074,12 @@ class Onplot:
 
         return img
 
-
+    @staticmethod   
     def cv_rgb(rgb, wait=2000):
         rgb = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
         cv2.imshow('img', rgb)
         if wait:
             cv2.waitKey(wait) 
-
 
     @staticmethod   
     def cv_nba(img, title="img", wait=0):
@@ -1058,7 +1134,6 @@ class Onformat:
             nua = nua[0]
         return PIL.Image.fromarray(nua)
 
-
     @staticmethod
     def pil_to_rgb(img):
         img = img.convert("RGB")
@@ -1087,10 +1162,15 @@ class Onformat:
         img = tf.cast(img, tf.float32) # _e_
         img = (img / 127.5) - 1
         return img
+
+    @staticmethod
+    def rgb_to_nnba(img):
+        img = Onformat.rgb_to_nba(img)
+        img = img[np.newaxis,:,:,:]
+        return img
         
     @staticmethod
     def _rgbs_to_nbas(input_image, real_image):
-        # normalizing the images to [-1, 1]
         input_image = tf.cast(input_image, tf.float32) # _e_
         real_image = tf.cast(real_image, tf.float32)   # _e_
         input_image = (input_image / 127.5) - 1
@@ -1269,7 +1349,6 @@ class Onformat:
         img = PIL.Image.fromarray(img)
         return img
 
-
     @staticmethod
     def cvis_to_pils(imgs):
         pils=[]
@@ -1279,49 +1358,94 @@ class Onformat:
         return pils
 
     @staticmethod
-    def bgr_cv2_rgb(img):
+    def bgr_to_rgb_cv(img):
         return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
     @staticmethod
     def path_to_nbt_with_tf(img, height=256, width=256):
-        img = Onfile.path_to_rgb(img)
+        img = Onfile.path_to_rgb_tf(img)
         img = tf.image.resize(img, [height, width], method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)        
         img = Onformat.rgb_to_nba(img)
         return img
-
-
-#   ******************
-#   FUNS FILE
 #
-#   ******************
+#
+#
+#   _Onfile
+#
+#
 class Onfile:
 
     @staticmethod
-    def rgbs_to_file(rgbs, scale=1, rows=1, save_path='./img.png',):
+    def folder_to_firstimg(folder):
+        target = None
+        for root, dirs, files in os.walk(folder):
+            for name in files:
+                if name.endswith((".png", ".jpg")):
+                    target=name
+                    print(f"|...> folder_to_firstpath: img found {name}")
+                    break
+                else:
+                    print('|...> folder_to_firstpath: no image')
+        return os.path.join(folder, target)
+
+    @staticmethod
+    def rgb_to_file(rgb, scale=1, save_path='./img.png',):
+        img = PIL.Image.fromarray(np.array(rgb, dtype=np.uint8))
+        print(f'|---> rgb_to_file {np.shape(rgb)}')
+
+        w,h = img.size
+        w = int(w*scale)
+        h = int(h*scale)
+
+        canvas = PIL.Image.new('RGBA', (w,h), 'white')
+
+        img = img.resize((w,h), PIL.Image.ANTIALIAS)
+        canvas.paste(img, (0,0)) # paste in position
+        canvas.save(save_path)
+        #display(canvas)
+
+    @staticmethod
+    def rgbs_to_grid_pil(rgbs, scale=1, rows=1):
         pils = []
         for img in rgbs:
             pils.append(PIL.Image.fromarray(np.array(img, dtype=np.uint8)))
         w,h = pils[0].size
         w = int(w*scale)
         h = int(h*scale)
+
         height = rows*h
         cols = int(math.ceil(len(pils) / rows))
         width = cols*w
         canvas = PIL.Image.new('RGBA', (width,height), 'white')
         for i,img in enumerate(pils):
             img = img.resize((w,h), PIL.Image.ANTIALIAS)
-            canvas.paste(img, (w*(i % cols), h*(i // cols))) 
-        canvas.save(save_path)
+            canvas.paste(img, (w*(i % cols), h*(i // cols))) # paste in position
+        return canvas
 
     @staticmethod
-    def path_to_nba(img, height=256, width=256):
-        img = Onfile.path_to_rgb(img)
+    def rgbs_grid_to_file(rgbs, scale=1, rows=1, save_path='./img.png'):
+        grid = Onfile.rgbs_to_grid_pil(rgbs, scale=1, rows=1)
+        grid.save(save_path)
+
+    @staticmethod
+    def path_to_nba_tf(path, height=256, width=256):
+        img = Onfile.path_to_rgb_tf(path)
         img = tf.image.resize(img, [height, width], method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
         img = Onformat.rgb_to_nba(img)
         return img
 
     @staticmethod
-    def path_to_tnua_with_cv(path):
+    def path_to_nba_cv(path):
+        img = cv2.imread(path, cv2.IMREAD_COLOR)
+        img = img.astype(np.float32)
+        img = img[...,::-1]
+        img = Onformat.rgb_to_nnba(img)
+        #img = onformat.nnba_to_rgb(img)
+        #onplot.plot_rgb(img, "pil_show_rgb")
+        return img
+
+    @staticmethod
+    def path_to_tnua_cv(path):
         img = cv2.imread(path, cv2.IMREAD_COLOR)
         img = img.astype(np.float32)
 
@@ -1347,9 +1471,8 @@ class Onfile:
                 img = cv2.resize(img, dsize=(mx, int(h)), interpolation=cv2.INTER_AREA)
         return img
 
-
     @staticmethod
-    def path_cv_pil(path):
+    def path_to_pil_cv(path):
         img = cv2.imread(path, cv2.IMREAD_COLOR)
         img = img[...,::-1] # bgr => rgb
         img = np.array(Image.fromarray((img).astype(np.uint8)))
@@ -1391,11 +1514,11 @@ class Onfile:
         return img
 
     @staticmethod
-    def names_to_nuas_with_tf(imgs_names, img_dir, args=None):
+    def names_to_nuas_tf(imgs_names, img_dir, args=None):
         imgs = []
         for item in imgs_names:
             path = os.path.join(img_dir, item)
-            img = Onfile.path_to_tnua_with_tf(path, args)
+            img = Onfile.path_to_tnua_tf(path, args)
             imgs.append(img)
         return imgs
 
@@ -1417,10 +1540,10 @@ class Onfile:
         return tnuas
 
     @staticmethod
-    def path_to_tnua_with_tf(path, args=None):
+    def path_to_tnua_tf(path, args=None):
             
         max_size = args.max_size 
-        assert os.path.isfile(path), f"path_to_tnua_with_tf img {path} not found"
+        assert os.path.isfile(path), f"path_to_tnua_tf img {path} not found"
 
         parts = tf.strings.split(path, os.sep)
         label = parts[-2]    
@@ -1441,8 +1564,9 @@ class Onfile:
         return img
 
     @staticmethod
-    def pil_to_file_with_cv(path, img):
-        cv2.imwrite(path, Onformat.pil_to_cvi(img))
+    def pil_to_file_cv(path, img):
+        cvi = Onformat.pil_to_cvi(img)
+        cv2.imwrite(path, cvi)
 
     @staticmethod
     def pil_to_file(path, img):
@@ -1453,7 +1577,6 @@ class Onfile:
         # bgr image 
         img = cv2.imread(path, cv2.IMREAD_COLOR)
         img = img.astype(np.float32)
-        # img = Onformat.vgg_preprocess(img)
         return img
 
     @staticmethod
@@ -1468,7 +1591,7 @@ class Onfile:
             img.save(path)
 
     @staticmethod
-    def path_cv2_dnua(path):  #  _e_
+    def path_to_nnua_cv(path):  #  _e_
         img = cv2.imread(path, cv2.IMREAD_COLOR)
         img = Onformat.vgg_preprocess(img)
         img = Onformat.vgg_deprocess(img)
@@ -1478,19 +1601,19 @@ class Onfile:
     @staticmethod
     def cvs_to_folder(imgs, path, img_format='img{}.jpg', zfill=4):
         for i,img in enumerate(imgs):
-            Onfile.cv_to_path(img, os.path.join(path, img_format.format(str(i).zfill(zfill))))
+            Onfile.cvi_to_path(img, os.path.join(path, img_format.format(str(i).zfill(zfill))))
 
     @staticmethod
-    def cv_to_path(img, path):
+    def cvi_to_path(img, path):
         saved = cv2.imwrite(path, img)
         return saved
 
     @staticmethod
-    def cv_to_file(path, img):
+    def cvi_to_file(path, img):
         cv2.imwrite(path, Onformat.rgb_to_bgr(img))
 
     @staticmethod
-    def path_to_cv(path, max_size=512):
+    def path_to_cvi(path, max_size=512):
 
         # bgr image
         img = cv2.imread(path, cv2.IMREAD_COLOR)
@@ -1507,29 +1630,28 @@ class Onfile:
 
         return img
 
-
     @staticmethod
-    def paths_to_cvs(paths):
+    def paths_to_cvis(paths):
         imgs = []
         for path in paths:
-            imgs.append(Onfile.path_to_cv(path))
+            imgs.append(Onfile.path_to_cvi(path))
         return imgs
 
     @staticmethod
-    def paths_to_folder_with_cv(paths, folder, img_format='img{}.jpg', zfill=4):
+    def paths_to_folder_cv(paths, folder, img_format='img{}.jpg', zfill=4):
         imgs = []
         for i,path in enumerate(paths):
-            img = Onfile.path_to_cv(path)
+            img = Onfile.path_to_cvi(path)
             img_path = os.path.join(folder, img_format.format(str(i).zfill(zfill)))
             if 1:
                 print(f'save {i} to {img_path}')
-            Onfile.cv_to_file(img_path, img)
+            Onfile.cvi_to_file(img_path, img)
         return imgs
 
     @staticmethod
     def folder_to_cvs(path):
         paths = Onfile.folder_to_paths(path)
-        imgs = Onfile.paths_to_cvs(paths)
+        imgs = Onfile.paths_to_cvis(paths)
         return imgs
 
     @staticmethod
@@ -1568,10 +1690,7 @@ class Onfile:
         return img
 
     @staticmethod
-    def folder_to_paths(path, 
-            exts=['jpg', 'jpeg', 'png'], 
-            n=-1
-        ):
+    def _folder_to_paths(path, exts=['jpg', 'jpeg', 'png'], n=-1):
         import glob
         paths = [] # <class 'list'>
         for ext in exts:
@@ -1581,25 +1700,24 @@ class Onfile:
         return paths
 
     @staticmethod
-    def folder_to_paths(path, 
-            exts=['jpg', 'jpeg', 'png'], 
-            n=-1
-        ):
+    def folder_to_paths(path, exts=['jpg', 'jpeg', 'png'], n=-1):
         paths=[]
         for root, dirs, files in os.walk(path):
             for name in files:
-                if name.endswith(tuple(exts)):
+                print(name, len(paths))
+                if name.lower().endswith(tuple(exts)):
                     target_path = os.path.join(path, name)
                     paths.append(target_path)
-                    if 0 < n and n < len(paths):
-                        break
                 else:
-                    pass # print('Only image')          
+                    pass # print('Only image')
+
+                if 0 < n and n < len(paths): # break if got enough files
+                    break                
         return paths
 
 
     @staticmethod
-    def copyfolder(input_folder, output_folder, deep=True):
+    def folder_to_folder(input_folder, output_folder, deep=True):
         for filename in os.listdir(input_folder):
             input_path = os.path.join(input_folder, filename)
             try:
@@ -1608,14 +1726,14 @@ class Onfile:
                     shutil.copyfile(input_path, output_path)
                 elif os.path.isdir(input_path):
                     if deep:
-                        Onfile.copyfolder(input_path, output_folder)
+                        Onfile.folder_to_folder(input_path, output_folder)
             except Exception as e:
                 print(f'Failed to copy {input_path}. Reason: {e}')
                 
     @staticmethod
-    def clearfolder(folder, inkey=''):
+    def folder_to_void(folder, inkey=''):
         if inkey and inkey in folder:
-            print(f"|===> clearfolder: {folder} has key {inkey}. will clear")
+            print(f"|===> folder_to_void: {folder} has key {inkey}. will clear")
             for filename in os.listdir(folder):
                 file_path = os.path.join(folder, filename)
                 try:
@@ -1626,7 +1744,7 @@ class Onfile:
                 except Exception as e:
                     print('Failed to delete %s. Reason: %s' % (file_path, e))
         else:
-            print(f"|===> clearfolder: {folder} has no key {inkey}")
+            print(f"|===> folder_to_void: {folder} has no key {inkey}")
 
     @staticmethod
     def qfolders(folder, topdown=False):
@@ -1671,6 +1789,29 @@ class Onfile:
                 if os.path.isfile(full_path):
                     paths.append(full_path)
 
+        print(f'|---> path_to_paths got {len(paths)} paths \n \
+            with patts {patts}')
+        return paths
+
+
+    @staticmethod
+    def path_to_names(path, patts=None): # ['*.jpg', '*.jpeg', '*.png']
+        paths = []
+
+        if patts:
+            for patt in patts:
+                inpath = os.path.join(path, patt)
+                new = glob.glob(inpath)
+                entry = os.path.basename(new)
+                paths = paths + new
+        else:
+            for entry in os.listdir(path):
+                full_path = os.path.join(path, entry)
+                if os.path.isfile(full_path):
+                    paths.append(entry) # file
+
+        print(f'|---> path_to_paths got {len(paths)} paths \n \
+            with patts {patts}')
         return paths
 
     @staticmethod
@@ -1696,7 +1837,6 @@ class Onfile:
             if 0: 
                 print(f"save image {i} to {outpath}")
             pil.save(outpath, 'JPEG', quality=90) 
-
 
     @staticmethod
     def folder_to_named_files(src_dir, dst_dir, img_format= 'img{}.jpg', zfill= 4, n=-1, verbose=False):
@@ -1767,19 +1907,36 @@ class Onfile:
         return input_image, real_image
 
     @staticmethod
-    def path_to_rgb(path):
+    def path_to_rgb_tf(path):
         img = tf.io.read_file(path) # => dtype=string
-        img = tf.image.decode_jpeg(img) # => shape=(256, 512, 3), dtype=uint8)
+        img = tf.image.decode_image(img) # => shape=(256, 512, 3), dtype=uint8)
         return img
 
     @staticmethod
-    def path_to_rgbt(path):
-        return Onfile.path_to_rgb(path)
+    def path_to_rgb_cv(path):
+        img = cv2.imread(path, cv2.IMREAD_COLOR)
+        if 0:
+            img = img.astype(np.float32)
+            img = img[...,::-1]
+        else:
+            img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+        return img
 
     @staticmethod
-    def path_to_tnua_with_tf(path, args=None):
+    def paths_to_rgbs_cv(paths):
+        imgs = []
+        for path in paths:
+            imgs.append(Onfile.path_to_rgb_cv(path))
+        return imgs
+
+    @staticmethod
+    def path_to_rgbt(path):
+        return Onfile.path_to_rgb_tf(path)
+
+    @staticmethod
+    def path_to_tnua_tf(path, args=None):
         max_size = args.max_size 
-        assert os.path.isfile(path), f"path_to_tnua_with_tf img {path} not found"
+        assert os.path.isfile(path), f"path_to_tnua_tf img {path} not found"
         parts = tf.strings.split(path, os.sep)
         label = parts[-2]    
 
@@ -1803,13 +1960,13 @@ class Onfile:
         imgs = []
         for item in imgs_names:
             path = os.path.join(img_dir, item)
-            img = Onfile.path_to_tnua_with_tf(path, args)
+            img = Onfile.path_to_tnua_tf(path, args)
             imgs.append(img)
         return imgs
 
     # https://github.com/rosasalberto/StyleGAN2-TensorFlow-2.x
     @staticmethod
-    def generate_and_save_images(images, it, plot_fig=True, outdir='./'):
+    def gen_save_pils(images, it, plot_fig=True, outdir='./'):
         plt.close() 
         fig = plt.figure(figsize=(9,9))
 
@@ -1830,12 +1987,82 @@ class Onfile:
         im_bgr = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
         cv2.imwrite(path, im_bgr)   
 
+#   ******************
+#   FUNS Onnet
+#
+#   ******************
+class Onnet:
+
+    @staticmethod
+    def berk(tofolder, dats=['facades']):
+
+        print(f'|===> download from a set of files on remote server')
+        dats=['cityscapes', 'night2day', 'edges2handbags', 'edges2shoes', 'facades', 'maps']
+        url = 'http://efrosgans.eecs.berkeley.edu/pix2pix/datasets'
+        zexts = ['.tar.gz', '.tar', '.tgz', '.zip']
+
+        local_tar_path = None
+        remote_tar_path = None
+
+        if 1:
+            print(f'|... look for tar in local site: {tofolder}')		
+            print(len(dats), len(zexts))
+            it1 = ((i, j) for i in range(len(dats)) for j in range(len(zexts)))
+            for i, j in it1:
+                dat_path = os.path.join(tofolder, f'{dats[i]}{zexts[j]}')
+                print(f'|.... look for {dat_path}')
+                if os.path.exists(dat_path):
+                    local_tar_path = dat_path
+                    print(f'|.... local {dat_path} already EXISTS !!! ')
+                    break
+
+        #if not local_tar_path:
+        #    print(f'|... look for tar in remote site {args.dataorg_dir}')	
+        #    print(len(dats), len(zexts))
+        #    it2 = ((i, j) for i in range(len(dats)) for j in range(len(zexts)))
+        #    for i, j in it2:
+        #        dat_path = os.path.join(args.gdata, f'{dats[i]}{zexts[j]}')
+        #        if os.path.exists(dat_path):
+        #            remote_tar_path = dat_path
+        #            print(f'|... remote {dat_path} already EXISTS !!! ')
+        #            break
+
+        print(f'|... local_tar_path EXISTS : {local_tar_path}')
+        print(f'|... remote_tar_path EXISTS : {remote_tar_path}')
+
+        # there is a remote tar and is not the local tar
+
+        if remote_tar_path and not local_tar_path:
+            print(f'|===> remote {remote_tar_path} to local {local_tar_path}')
+            tarname = os.path.basename(os.path.normpath(remote_tar_path))
+            print(f'|... the tar name: {tarname}')
+            local_tar_path = os.path.join(tofolder, tarname)
+            print(f'|... copy {remote_tar_path} to {local_tar_path}')
+            from shutil import copyfile
+            copyfile(remote_tar_path, local_tar_path)
+
+        # if local tar, unzip
+
+        if local_tar_path:
+            print(f'|... unzip to data local_tar_path {local_tar_path}')
+            tree_root = None
+            onutil.tunzip(None, local_tar_path, tofolder, tree_root)
+    
+        # check data folder
+        untarfolder = os.path.join(tofolder, dat)
+        print(f'|... untar folder {untarfolder} exists" {os.path.exists(untarfolder)}')
+
 
 #   ******************
 #   FUNS Onimg
 #
 #   ******************
 class Onimg:
+
+
+    @staticmethod
+    def img_to_img_cv(img, outpath=None):
+        pass
 
 
     @staticmethod
@@ -2035,11 +2262,8 @@ class Onimg:
                 break
             img = thresh
 
-
-
         img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
         return img
-
 
 #   ******************
 #   FUNS ONVID
@@ -2087,19 +2311,25 @@ class Onvid:
         cv2.destroyAllWindows()
 
     @staticmethod
-    def frames_to_video(inputpath, outputpath, fps):
+    def frames_to_video(inputpath, outputpath, fps=30, ext='jpg', size = None):
+
+        print(f'|---> frames_to_video {inputpath} => {outputpath}')
+
         DWITH_FFMPEG="ON"    
         image_array = []
-        files = [f for f in os.listdir(inputpath) if os.path.isfile(os.path.join(inputpath, f))]
-        
-        # files.sort(key = lambda x: int(x[5:-4]))
 
+        files = [f for f in os.listdir(inputpath) if f.endswith(ext)]
+        if 0:
+            files.sort(key = lambda x: int(x[5:-4]))
+
+        
         if 1:
             for i in range(len(files)):
                 img_path = os.path.join(inputpath,files[i] )
                 print(f'|---> frames_to_video img_path: {img_path}')
                 img = cv2.imread(img_path)
-                size =  (img.shape[1],img.shape[0])
+                if not size:
+                    size = (img.shape[1],img.shape[0])
                 img = cv2.resize(img,size)
                 image_array.append(img)
 
@@ -2129,31 +2359,41 @@ class Onvid:
         os.system('rm -rf %s'%temp_dir)
 
     @staticmethod
-    def folder_to_vid(fromfolder, dstfile, ext='png', save=True, args=None):
+    def folder_to_mp4(fromfolder, 
+                dstpath=None, 
+                #ext='png', 
+                patts=None, # ['*.jpg', '*.jpeg', '*.png']
+                size=(600, 400),
+                fps=20,
+                label='',
+                interval=30,
+                args=None):
+
         srcpath = fromfolder
-        anifile = dstfile
-        size=(640, 480)
-        fps=20
 
         if 1: # args.verbose: 
-            print(f'|--->  folder_to_vid  \n \
+            print(f'|--->  folder_to_mp4  \n \
                 srcpath:         {srcpath} \n \
-                anifile:         {anifile} \n \
+                dstpath:         {dstpath} \n \
             ')            
 
-        # anime.anigif(srcpath, anifile)
+        # anime.anigif(srcpath, dstpath)
         fig = plt.figure()
-        fig.set_size_inches(size[0] / 100, size[1] / 100)
+        scale = 1 / 100
+        fig.set_size_inches(size[0] * scale, size[1] * scale)
         ax = fig.add_axes([0, 0, 1, 1], frameon=False, aspect=1)
         ax.set_xticks([])
         ax.set_yticks([])
         images = []
 
-        imgnames = [img for img in os.listdir(srcpath) if img.endswith(ext)]
-        for i,imgname in enumerate(imgnames):
-            imgpath = os.path.join(srcpath, imgname)
+        #imgnames = [img for img in os.listdir(srcpath) if img.endswith(ext)]
+        paths = Onfile.path_to_paths(srcpath, patts)
+
+        #for i,imgname in enumerate(imgnames):
+        for i,imgpath in enumerate(paths):
+            #imgpath = os.path.join(srcpath, imgname)
             img = imageio.imread(imgpath)
-            label=' '
+            label=label
             plt_im = plt.imshow(img, animated=True)
             plt_txt = plt.text(10, 310, label, color='black')
             images.append([plt_im, plt_txt])
@@ -2162,43 +2402,194 @@ class Onvid:
         # MovieWriter imagemagick unavailable; 
         # trying to use <class 'matplotlib.animation.PillowWriter'> instead
         if 1: #  args.verbose:
-            print(f'|...>  folder_to_vid: call anim.ArtistAnimation  \n \
+            print(f'|...>  folder_to_mp4: call anim.ArtistAnimation  \n \
                 images len:      {len(images)} \n \
             ')
 
         import matplotlib.animation as anim
         ani = anim.ArtistAnimation(fig, images, 
-            interval=20, blit=True, repeat_delay=1000)
-
-        if save:
-            ani.save(dstfile, writer='imagemagick')  
+            interval=interval, # Delay between frames in milliseconds
+        )
 
         return ani
 
     @staticmethod
-    def folder_to_gif(fromfolder, dstpath='./out.gif', patts=None):
+    def show_file(path):
+        cap = cv2.VideoCapture(path)
+        Onvid.show_vid(cap)
+
+    @staticmethod
+    def show_vid(cap):
+        ret, frame = cap.read()
+        while(1):
+            ret, frame = cap.read()
+            cv2.imshow('frame',frame)
+            if cv2.waitKey(1) & 0xFF == ord('q') or ret==False :
+                cap.release()
+                cv2.destroyAllWindows()
+                break
+            cv2.imshow('frame',frame)
+
+    # ref: https://el-tramo.be/blog/ken-burns-ffmpeg/
+    #       https://advancedweb.hu/generating-a-crossfaded-slideshow-video-from-images-with-ffmpeg-and-melt/
+    #       https://superuser.com/questions/833232/create-video-with-5-images-with-fadein-out-effect-in-ffmpeg/834035#834035
+    #       number following -t in -loop 1 -t 1 -i 001.png defines the duration of individual frames, and that numbers following T/ within filter_complex block defines the transition's duration    
+    #       https://stackoverflow.com/questions/37991201/problems-building-image-slideshow-with-sliding-transition-using-ffmpeg    
+    @staticmethod
+    def folder_to_slider(fromfolder, 
+            dstpath='./out.mp4', 
+            patts=None, 
+            ts=2,   # time per slide
+            td=0.5, # transition time
+            num_slides=None, # num of slides
+            args=None,
+        ):
+        paths = Onfile.path_to_paths(fromfolder, patts)
+        paths = sorted(paths)
+        if num_slides:
+            paths = paths[:num_slides]   # get first num_slides
+        assert len(paths) >= 3, f'at least 3 frames needed'
+
+        print(f'|---> folder_to_slider \n \
+            ts: {ts} \n \
+            td: {td} \n \
+            num_slides: {num_slides} \n \
+            fromfolder (from folder): {fromfolder} \n \
+            dstpath (to file): {dstpath} \n \
+            patts (patterns): {patts} \n \
+            paths (imgs to gif): {len(paths)} \n \
+        ')
+
+        #ffmpeg -y \
+        #    -loop 1 -t 32.5 -i /tmp/NQNMpj/0.png \
+        #    -loop 1 -t 32.5 -i /tmp/NQNMpj/1.png \
+        #    -loop 1 -t 32.5 -i /tmp/NQNMpj/2.png \
+        #    -filter_complex "
+        #        [1]fade=d=0.5:t=in:alpha=1,setpts=PTS-STARTPTS+32/TB[f0];
+        #        [2]fade=d=0.5:t=in:alpha=1,setpts=PTS-STARTPTS+64/TB[f1];
+        #        [0][f0]overlay[bg1];
+        #        [bg1][f1]overlay,format=yuv420p[v]
+        #    " -map "[v]" \
+        #    -movflags +faststart /tmp/output/res.mp4
+
+
+        cmd = f'ffmpeg -y '
+        #cmd = f'{cmd} -v verbose '
+        for i,path in enumerate(paths): # input images
+            cmd = f'{cmd } -loop 1 -t {ts + td} -i {path} ' # loop through input imgs
+        cmd = f'{cmd } -filter_complex '   # complex filter
+        cmd = f'{cmd } "'   # start complex filter
+
+        # fades
+        if 0:
+            for i,path in enumerate(paths[:-1]): 
+                cmd = f'{cmd } [{i+1}:v]fade=d={td}:t=in:alpha=1,setpts=PTS-STARTPTS+{ts * (i+1)}/TB[v{i}]; '
+
+            cmd = f'{cmd} [0:v][v0]overlay[bg1]; '
+            cmd = f'{cmd} [bg1][v1]overlay,format=pix_fmts=yuva420p[v] '  # mp4
+
+        elif 0:
+            #for i,path in enumerate(paths[:-1]): 
+                #cmd = f'{cmd } [{i+1}:v]fade=d={td}:t=in:alpha=1,setpts=PTS-STARTPTS+{ts * (i+1)}/TB[f{i}]; '
+            for i,path in enumerate(paths[:]): 
+                #cmd = f'{cmd } [{i}:v]fade=d={td}:t=in:alpha=1,setpts=PTS-STARTPTS+{ts}/TB[v{i}]; '
+                cmd = f'{cmd } [{i}:v]fade=d={td}:t=in:alpha=1:st={ts}[v{i}]; '
+                #cmd = f'{cmd } [{i+1}:v]fade=d={td}:t=in:alpha=1:st={ts}[v{i}]; '
+                #cmd = f'{cmd } [{i}:v]scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1,fade=t=in:st=0:d=1,fade=t=out:st=4:d=1[v{i}]; '
+
+            #cmd = f'{cmd} [0:v][v0]overlay[bg1]; '
+            #cmd = f'{cmd} [bg1][v1]overlay,format=pix_fmts=yuva420p[v] '  # mp4
+
+            #cmd = f'{cmd} [bg0][v0]overlay[bg1]; '
+            #cmd = f'{cmd} [bg1][v1]overlay[bg2]; '
+            #cmd = f'{cmd} [bg2][v2]overlay[bg3]; '
+            #cmd = f'{cmd} [bg3][v3]overlay,format=yuv420p[v]'
+
+            # concatenate
+            for i,path in enumerate(paths[:]): 
+                cmd = f'{cmd }[v{i}]'
+            cmd = f'{cmd }concat=n={len(paths)}:v=1:a=0,format=yuv420p[v] ' # -pix_fmt yuv420p: pixel format
+
+        elif 1:
+
+        #ffmpeg -y ^
+        #-loop 1 -t 4.5 -i C:\e\c\content\glab\compose\art\data\img0000.jpg ^
+        #-loop 1 -t 4.5 -i C:\e\c\content\glab\compose\art\data\img0001.jpg ^
+        #-loop 1 -t 4.5 -i C:\e\c\content\glab\compose\art\data\img0002.jpg ^
+        #-loop 1 -t 4.5 -i C:\e\c\content\glab\compose\art\data\img0003.jpg ^
+        #-loop 1 -t 4.5 -i C:\e\c\content\glab\compose\art\data\img0004.jpg ^
+        #-filter_complex  ^
+        #"  ^
+        #[1]format=yuva444p,fade=d=1:t=in:alpha=1,setpts=PTS-STARTPTS+4/TB[f0]; ^
+        #[2]format=yuva444p,fade=d=1:t=in:alpha=1,setpts=PTS-STARTPTS+8/TB[f1]; ^
+        #[3]format=yuva444p,fade=d=1:t=in:alpha=1,setpts=PTS-STARTPTS+12/TB[f2]; ^
+        #[4]format=yuva444p,fade=d=1:t=in:alpha=1,setpts=PTS-STARTPTS+16/TB[f3]; ^
+        #[0][f0]overlay[bg1]; ^
+        #[bg1][f1]overlay[bg2]; ^
+        #[bg2][f2]overlay[bg3]; ^
+        #[bg3][f3]overlay,format=yuv420p[v] ^
+        #"  ^
+        #-map "[v]"  -movflags +faststart  C:\e\c\content\glab\compose\art\Results\ani.mp4
+
+            # fades
+            for i,path in enumerate(paths[:-1]): 
+                cmd = f'{cmd } [{i+1}]format=yuva444p,fade=d=1:t=in:alpha=1,setpts=PTS-STARTPTS+{ts * i}/TB[f{i}]; '
+
+            #ffmpeg -i input -i logo -filter_complex 'overlay=10:main_h-overlay_h-10' output
+            # first overlay
+            cmd = f'{cmd} [0][f0]overlay[bg1];'
+            # overlays
+            for i,path in enumerate(paths[:-3]): 
+                cmd = f'{cmd } [bg{i+1}][f{i+1}]overlay[bg{i+2}]; '
+
+            cmd = f'{cmd} [bg{len(paths)-2}][f{len(paths)-2}]overlay,format=yuv420p[v]'
+
+        cmd = f'{cmd} "'    # close complex filter
+        cmd = f'{cmd} -map "[v]" '
+        cmd = f'{cmd} -movflags +faststart '
+        cmd = f'{cmd} {dstpath}'    # mp4
+
+
+        ##ffmpeg -loop 1 -i tests/lena.pnm -s 214x214 -t 10 -qscale 2 lena.mov
+        #cmd = f'ffmpeg -loop 1  '
+        #cmd = f'{cmd} -i {paths[0]}  '
+        #cmd = f'{cmd} -s 214x214 -t 10  '
+        #cmd = f'{cmd} -qscale 2   '
+        #cmd = f'{cmd} {dstpath}   '
+
+
+        print(f'cmd: {cmd}')
+        os.system(cmd)
+
+    @staticmethod
+    def folder_to_gif(fromfolder, 
+            dstpath='./out.gif', 
+            patts=['*.png'],
+            span=None,
+            args=None):
+
         paths = Onfile.path_to_paths(fromfolder, patts)
         paths = sorted(paths)
 
         print(f'|---> folder_to_gif \n \
-            fromfolder: {fromfolder} \n \
-            dstpath: {dstpath} \n \
-            patts: {patts} \n \
-            paths: {len(paths)} \n \
+            fromfolder (from folder): {fromfolder} \n \
+            dstpath (to file): {dstpath} \n \
+            patts (patterns): {patts} \n \
+            paths (got imgs to gif): {len(paths)} \n \
         ')
 
         with imageio.get_writer(dstpath, mode='I') as writer:
 
             for i,filename in enumerate(paths):
-                # if i % 8 != 0: continue
-                img = imageio.imread(filename)
+                if span and (i % span != 0): 
+                    continue
+                else:
+                    img = imageio.imread(filename)
                 writer.append_data(img)
-            #image = imageio.imread(filename)
-            #writer.append_data(image)
 
     @staticmethod
-    def vid_show(path):
-        print("show anigif")
+    def vid_show_file(path):
+        print(f'|---> vid_show_file {path}')
         anim_file = path
         cap = cv2.VideoCapture(anim_file)
         ret, frame = cap.read()
@@ -2817,6 +3208,56 @@ class Ondata:
                 out[-1] = np.flip(out[-1], 1)
 
         return np.array(out).astype('float32') / 255.0
+
+
+#   *******************
+#   Ontf
+#
+#   *******************
+from distutils.version import StrictVersion
+
+class Ontf:
+    @staticmethod
+    def check_tf_version():
+        # check tensorflow version
+        tf_min_ver = '2.0.0'
+        cur_tf_ver = tf.__version__
+        print(f'Tensorflow version: {cur_tf_ver}')
+        if StrictVersion(cur_tf_ver) < StrictVersion(tf_min_ver):
+            raise ValueError(f'Need at least tf ver {tf_min_ver}')
+        return cur_tf_ver
+
+    @staticmethod
+    def allow_memory_growth():
+        gpus = tf.config.experimental.list_physical_devices('GPU')
+        if gpus:
+            try:
+                # Currently, memory growth needs to be the same across GPUs
+                for gpu in gpus:
+                    tf.config.experimental.set_memory_growth(gpu, True)
+                logical_gpus = tf.config.experimental.list_logical_devices('GPU')
+                print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
+            except RuntimeError as e:
+                # Memory growth must be set before GPUs have been initialized
+                print(e)
+        return
+
+    @staticmethod
+    def split_gpu_for_testing(mem_in_gb=4):
+        gpus = tf.config.experimental.list_physical_devices('GPU')
+        if gpus:
+            try:
+                tf.config.experimental.set_virtual_device_configuration(
+                    gpus[0],
+                    [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=1024 * mem_in_gb),
+                    tf.config.experimental.VirtualDeviceConfiguration(memory_limit=1024 * mem_in_gb)]
+                )
+                logical_gpus = tf.config.experimental.list_logical_devices('GPU')
+                print(f'{len(gpus)} Physical GPUs, {len(logical_gpus)} Logical GPUs')
+            except RuntimeError as e:
+                print(e)
+        return
+
 
 
 #   *******************
@@ -5001,6 +5442,47 @@ class Onrolux:
 #
 #   ******************
 class Onmoono:
+
+# utils
+    @staticmethod
+    def rgb_to_nba():
+        print(f'|===> adjust_dynamic_range')
+        out_dtype = tf.dtypes.float32
+        range_in = (0.0, 255.0)
+        range_out = (-1.0, 1.0)
+        # images = np.ones((2, 2), dtype=np.float32) * 255.0
+        images1 = np.ones((2, 2), dtype=np.float32) * 0.0
+        images2 = np.ones((2, 2), dtype=np.float32) * 127.5
+        images3 = np.ones((2, 2), dtype=np.float32) * 255.0
+        adjusted1 = Onmoono.adjust_dynamic_range(images1, range_in, range_out, out_dtype)
+        adjusted2 = Onmoono.adjust_dynamic_range(images2, range_in, range_out, out_dtype)
+        adjusted3 = Onmoono.adjust_dynamic_range(images3, range_in, range_out, out_dtype)
+        print(f'|...> adjust_dynamic_range 1: {adjusted1}')
+        print(f'|...> adjust_dynamic_range 2: {adjusted2}')
+        print(f'|...> adjust_dynamic_range 3: {adjusted3}')
+
+    @staticmethod
+    def nba_to_rgb():
+        out_dtype = tf.dtypes.uint8
+        range_in = (-1.0, 1.0)
+        range_out = (0.0, 255.0)
+        images1 = np.ones((2, 2), dtype=np.float32) * -1.0
+        images2 = np.ones((2, 2), dtype=np.float32) * 0.0
+        images3 = np.ones((2, 2), dtype=np.float32) * 1.0
+        adjusted1 = Onmoono.adjust_dynamic_range(images1, range_in, range_out, out_dtype)
+        adjusted2 = Onmoono.adjust_dynamic_range(images2, range_in, range_out, out_dtype)
+        adjusted3 = Onmoono.adjust_dynamic_range(images3, range_in, range_out, out_dtype)
+        print(f'|...> adjust_dynamic_range 1: {adjusted1}')
+        print(f'|...> adjust_dynamic_range 2: {adjusted2}')
+        print(f'|...> adjust_dynamic_range 3: {adjusted3}')        
+
+    @staticmethod
+    def merge():
+        batch_size = 8
+        res = 128
+        fake_images = np.ones(shape=(batch_size, res, res, 3), dtype=np.uint8)
+        canvas = Onmoono.merge_batch_images(fake_images, res, rows=4, cols=2)
+        print(f'|...> canvas shape {np.shape(canvas)}')
 
 #   ******************
 #

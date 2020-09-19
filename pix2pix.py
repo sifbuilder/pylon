@@ -131,7 +131,7 @@ onlllyas = Onlllyas()
 #
 def getap():
     cp = {
-        "primecmd": 'nndanboo', # 'nncrys', #  
+        "primecmd": 'nncrys', #  'nndanboo', # 
 
         "MNAME": "pix2pix",
         "AUTHOR": "tensorflow2",
@@ -139,15 +139,17 @@ def getap():
         "GITPOD": "facades",
         "DATASET": "facades",
 
-        "RESETCODE": 0,
-        "LOCALDATA": 0,
+        "TRAIN": 1,              # train model
+
+        "RESETCODE": 0, # reset code folder
+        "LOCALDATA": 0, # 
         "LOCALMODELS": 0,
         "LOCALLAB": 1,
 
-        "grel_infix": '../..',            # relative path to content 
-        "net_prefix": '//enas/hdrive',     
-        "gdrive_prefix": '/content/drive/My Drive',     
-        "gcloud_prefix": '/content',     
+        "grel_infix": '../..',                      # relative path to content 
+        "net_prefix": '//enas/hdrive',              # local net path prefix
+        "gdrive_prefix": '/content/drive/My Drive', # colab path prefix with gdrive
+        "gcloud_prefix": '/content',                # colab path prefix without gdrive
     }
 
     local_prefix = os.path.abspath('')
@@ -198,6 +200,8 @@ def getap():
         "keep_name": 0, # _e_
         "numbered": 1, # _e_
         "zfill": 4, # zfill name counter
+        
+        "ckpt_prefix": 'ckpt-',
 
     }
 
@@ -460,7 +464,7 @@ class GAN(object):
     #
     #
     #            
-    # @tf.function
+    #@tf.function
     def train_step(self, input_image, target, epoch, summary_writer, args=None):
 
         with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
@@ -510,9 +514,7 @@ class GAN(object):
                 if (n+1) % 100 == 0:
                     print() # cr after 100 interations
                 self.train_step(input_image, target, epoch, summary_writer, args)
-
-            print()
-          
+         
             # 	save step (epoch)
 
             self.step.assign_add(1)
@@ -520,14 +522,14 @@ class GAN(object):
             # 	save checkpoint
 
             if (epoch + 1) % n_iterations == 1:
-                print(f'|... saving (checkpoint) the model every {n_iterations} max_epochs to {self.ckpt_prefix}')
                 file_prefix = os.path.join(self.ckpt_dir, self.ckpt_prefix)
+                print(f'|...> saving (checkpoint) the model every {n_iterations} max_epochs to {file_prefix}-{epoch}')
                 self.checkpoint.save(file_prefix = file_prefix)
  
             #   save generated images           
 
-            if 0 and test_ds and (epoch + 1) % n_iterations == 1:
-                print(f'|... savings images every for epoch {epoch}')
+            if args.visual > 1 and test_ds and (epoch + 1) % n_iterations == 1:
+                print(f'|...> savings images every for epoch {epoch}')
                 self.generate_images(test_ds, epoch, args)
 
             print ('Time taken for epoch {} is {} sec\n'.format(epoch + 1, time.time()-start))
@@ -543,7 +545,7 @@ class GAN(object):
         results_dir = self.results_dir
         zfill = args.zfill
 
-        print(f"|===> generate_images \n \
+        print(f"|---> generate_images \n \
             results_dir: {results_dir} \n \
             zfill: {zfill} \n \
         ")
@@ -577,41 +579,44 @@ class GAN(object):
     #        
     def restore_checkpoint(self, ckptidx=None, max_to_keep=5):
 
-        print(f'|===> model.restore_checkpoint \n \
-            self.checkpoint: {self.checkpoint} \n \
-            self.ckptidx: {self.ckptidx} \n \
-            self.ckpt_dir: {self.ckpt_dir} \n \
-            self.ckpt_prefix = {self.ckpt_prefix} \n \
-            max_to_keep: {max_to_keep} \n \
+        print(f'|---> model.restore_checkpoint \n \
+        self.checkpoint: {self.checkpoint} \n \
+        self.ckptidx: {self.ckptidx} \n \
+        self.ckpt_dir: {self.ckpt_dir} \n \
+        self.ckpt_prefix: {self.ckpt_prefix} \n \
+        max_to_keep: {max_to_keep} \
         ')
 
-        self.ckpt_manager = ckpt_manager = tf.train.CheckpointManager(
+        self.ckpt_manager = tf.train.CheckpointManager(
             self.checkpoint, 
             self.ckpt_dir, 
             max_to_keep=max_to_keep
         )
+        #
         # if a checkpoint exists, restore the latest checkpoint.
-        
-
+        #
         # self.ckptidx: {None => last, ckptidx-n => n, ckptidx--n => none}
         if self.ckptidx == None:
-            fromcheckpoint = ckpt_manager.latest_checkpoint
-            self.ckptidx = fromcheckpoint.split('-')[-1]
-            if self.verbose > 0: print(f'|... get latest ckpt: {self.ckptidx}')
+            fromcheckpoint = self.ckpt_manager.latest_checkpoint
+            if self.verbose > 0: print(f'|...> get latest ckpt: {fromcheckpoint}')
+            if fromcheckpoint: # not None
+                self.ckptidx = fromcheckpoint.split('-')[-1]
+            if self.verbose > 0: print(f'|...> get latest ckpt: {self.ckptidx}')
         elif int(self.ckptidx) < 0:
-            if self.verbose > 0: print(f'|... (self.ckptidx < 0) get no ckpt')
+            if self.verbose > 0: print(f'|...> (self.ckptidx < 0) get no ckpt')
             fromcheckpoint = None
             self.ckptidx = fromcheckpoint
         elif int(self.ckptidx) >= 0:
-            if self.verbose > 0: print(f'|... get ckpt {self.ckptidx}')
+            if self.verbose > 0: print(f'|...> get ckpt {self.ckptidx}')
             fromcheckpoint = os.path.join(self.ckpt_dir, f'{self.ckpt_prefix}{self.ckptidx}')
             self.ckptidx = self.ckptidx
 
+        res = None
         if fromcheckpoint:
+            res = fromcheckpoint
             self.checkpoint.restore(fromcheckpoint)
-            return fromcheckpoint
-        else:
-            return None
+        
+        return res
 #
 #
 #   FUNS PRJ
@@ -635,7 +640,7 @@ def path_to_decoded(path, rate=0.5):
     imgs = []
     img = tf.io.read_file(path) # => dtype=string
     if 0: 
-        print(f'|... img: {type(img)} {np.shape(img)}')    
+        print(f'|...> img: {type(img)} {np.shape(img)}')    
     img = tf.image.decode_jpeg(img) # => shape=(256, 512, 3), dtype=uint8)
     img = tf.cast(img, tf.float32)
 
@@ -657,7 +662,7 @@ def paths_to_decoded(paths, rate=2):
     for path in paths:
         img = tf.io.read_file(path) # => dtype=string
         if 0: 
-            print(f'|... img: {type(img)} {np.shape(img)}')
+            print(f'|...> img: {type(img)} {np.shape(img)}')
         img = tf.image.decode_jpeg(img) # => shape=(256, 512, 3), dtype=uint8)
         img = tf.cast(img, tf.float32)
         imgs.append(img)
@@ -678,12 +683,12 @@ def probe_dataset_11(dataset, dst_dir):
 
         plt.figure()
         plt.imshow(inp[0] * 0.5 + 0.5)
-        print(f'|... save to {i}_example_input.png')
+        print(f'|...> save to {i}_example_input.png')
         plt.savefig(os.path.join(dst_dir, f'{i}_example_input.png'))
 
         plt.figure()
         plt.imshow(re[0] * 0.5 + 0.5)
-        print(f'|... save to {i}_example_target.png')        
+        print(f'|...> save to {i}_example_target.png')        
         plt.savefig(os.path.join(dst_dir, f'{i}_example_target.png'))
 
         i += 1
@@ -751,7 +756,7 @@ def paths_to_dataset(pths, patts,
         for n, (inp, re) in dataset.enumerate():
             ''' {np.shape(input_image)}" (n, 512, 512, 3) '''
             if n < 2:
-                print(f'|... path_to_dataset batch {n}: {np.shape(inp)} {np.shape(re)}')
+                print(f'|...> path_to_dataset batch {n}: {np.shape(inp)} {np.shape(re)}')
 
     return dataset
 #
@@ -797,7 +802,7 @@ def imgs_resize_with_tf(imgs, height, width, method=tf.image.ResizeMethod.AREA):
     print(f'|---> imgs_resize_with_tf: {np.shape(imgs)}')	
     res = []
     for i,img in enumerate(imgs):
-        print(f'|... imgs_resize_with_tf {i} {np.shape(img)}')
+        print(f'|...> imgs_resize_with_tf {i} {np.shape(img)}')
         img = tnua_resize(img, height, width, method)
         res.append(img)		
     return res
@@ -816,7 +821,7 @@ def img_crop_random(img, height, width):
     print(f'|---> img_crop_random {shape}, {height}, {width}')
     	
     img = tf.image.random_crop(img, size=[height, width, 3])
-    print(f'|... img_crop_random {np.shape(img)}, {height}, {width}')	
+    print(f'|...> img_crop_random {np.shape(img)}, {height}, {width}')	
     return img
 #
 def imgs_crop_random(imgs, height, width):
@@ -875,10 +880,10 @@ def download_and_processing_pix2pix_dataset(data_dir_or_predefined_task_name=Non
                 data_dir_or_predefined_task_name,
                 predefined_task_name_list,
                 )
-        print("|... prepare data from task_name")
+        print("|...> prepare data from task_name")
     elif os.path.exists(data_dir_or_predefined_task_name):
         PATH = data_dir_or_predefined_task_name
-        print("|... prepare data from data_dir")
+        print("|...> prepare data from data_dir")
     else:
         raise ValueError("Task_name error and data_dir does not exist!")
 #
@@ -888,174 +893,6 @@ def download_and_processing_pix2pix_dataset(data_dir_or_predefined_task_name=Non
 #    ref: https://github.com/NVIDIA/pix2pixHD
 #    ref: https://www.tensorflow.org/tutorials/generative/pix2pix
 #
-#   nnzip
-#   
-def nnzip(args, kwargs):
-
-    args = onutil.pargs(vars(args))
-    args.PROJECT = 'enzip'
-    args.DATASET = 'facades'
-    xp = getxp(vars(args))
-    args = onutil.pargs(xp)
-    onutil.ddict(vars(args), 'args')
-
-    print(f"|---> nnzip: {args.PROJECT}:   \n ")
-
-    if 1: # tree
-
-        args.dataorg_train_dir = os.path.join(args.dataorg_dir, 'train')
-        args.dataorg_test_dir = os.path.join(args.dataorg_dir, 'test')
-
-        assert(os.path.exists(args.dataorg_dir))
-        assert(os.path.exists(args.dataorg_train_dir))
-        assert(os.path.exists(args.dataorg_test_dir))
-
-        args.ckpt_dir = args.models_dir
-
-        ''' train/test images in origin with pattern '''
-        args.data_train_B_dir = os.path.join(args.data_dir, 'train_B')
-        args.data_train_A_dir = os.path.join(args.data_dir, 'train_A')
-        args.data_test_B_dir = os.path.join(args.data_dir, 'test_B')
-        args.data_test_A_dir = os.path.join(args.data_dir, 'test_A')
-
-        args.dataset_train_B_dir = os.path.join(args.dataset_dir, 'train_B')
-        args.dataset_train_A_dir = os.path.join(args.dataset_dir, 'train_A')
-        args.dataset_test_B_dir = os.path.join(args.dataset_dir, 'test_B')
-        args.dataset_test_A_dir = os.path.join(args.dataset_dir, 'test_A')
-
-        args.zipfile = os.path.join(args.dataorg_dir, f'{args.DATASET}.zip')
-
-        os.makedirs(args.data_train_B_dir, exist_ok=True) 
-        os.makedirs(args.data_train_A_dir, exist_ok=True) 
-        os.makedirs(args.data_test_B_dir, exist_ok=True) 
-        os.makedirs(args.data_test_A_dir, exist_ok=True) 
-
-        os.makedirs(args.dataset_train_B_dir, exist_ok=True) 
-        os.makedirs(args.dataset_train_A_dir, exist_ok=True) 
-        os.makedirs(args.dataset_test_B_dir, exist_ok=True) 
-        os.makedirs(args.dataset_test_A_dir, exist_ok=True) 
-
-        os.makedirs(args.models_dir, exist_ok=True)
-        os.makedirs(args.logs_dir, exist_ok=True)
-        os.makedirs(args.tmp_dir, exist_ok=True)
-
-    if args.verbose: print(f"|---> tree: {args.PROJECT}:   \n \
-        args.PROJECT:    	  {args.PROJECT} \n \
-        args.DATASET:    	  {args.DATASET} \n \
-        cwd:     				{os.getcwd()} \n \
-        args.dataorg_dir:     {args.dataorg_dir} \n \
-        args.dataorg_train_dir: {args.dataorg_train_dir} \n \
-        args.dataorg_test_dir: {args.dataorg_test_dir} \n \
-        args.ckpt_dir:  {args.ckpt_dir} \n \
-        args.logs_dir:        {args.logs_dir} \n \
-        args.tmp_dir:        {args.tmp_dir} \n \
-        args.zipfile:         {args.zipfile} \n \
-        args.verbose:         {args.verbose}, \n \
-        args.visual:          {args.visual}, \n \
-    ")
-
-    if 1: # config
-        args.height = args.img_height
-        args.width = args.img_width
-        args.buffer_size = args.buffer_size
-        args.batch_size = args.batch_size
-        args.input_channels = args.input_channels
-        args.input_shape = [args.height, args.width, args.input_channels]
-        if 0:
-            ''' copy org to same data folder'''
-            args.patts = ['*in.png', '*re.png']
-        else:
-            ''' will separate images in data'''
-            args.patts = ['*.png', '*.png']
-
-    if args.verbose: print(f"|---> nnleonardo config:   \n \
-        args.max_epochs:            {args.max_epochs}, \n \
-        args.output_channels:	{args.output_channels} \n \
-        args.height: 			{args.height} \n \
-        args.width: 			{args.width} \n \
-        args.input_channels: 	{args.input_channels} \n \
-        args.buffer_size: 		{args.buffer_size} \n \
-        args.batch_size: 		{args.batch_size} \n \
-        args.input_shape: 		{args.input_shape} \n \
-        args.patts:     		{args.patts}, \n \
-    ")
-
-    if 1: # remote data to local
-
-        #args.DATASET = 'facades'
-        dat = 'facades'
-        dats=['facades']
-
-        if 0: # create zip
-            tarfolder = os.path.join(args.data_dir, dat)
-            print(f'|===> create zip from {tarfolder} folder')
-            tarfile = os.path.join(args.data_dir, 'test.gz')
-            onutil.tenzip(tarfile, tarfolder)
-
-        print(f'|===> download google folder by id')
-        if 0: 
-            URL='https://drive.google.com/drive/folders/'
-            gid = '1vTa_y5RYvzk6BPDXQ7HrXfhp8BgjzoKv'
-            onutil.gdownid(URL, gid, args.data_dir)
-
-        print(f'|===> download from a set of files on remote server')
-
-        print(f'|... chech that remote is url')
-
-        dats=['cityscapes', 'night2day', 'edges2handbags', 'edges2shoes', 'facades', 'maps']
-        url = 'http://efrosgans.eecs.berkeley.edu/pix2pix/datasets'
-        #url = args.dataorg_dir
-        zexts = ['.tar.gz', '.tar', '.tgz', '.zip']
-
-        print(f'|... chech that remote is path')
-
-        local_tar_path = None
-        if 1:
-            print(f'|... look for tar in local site {args.data_dir}')		
-            print(len(dats), len(zexts))
-            it1 = ((i, j) for i in range(len(dats)) for j in range(len(zexts)))
-            for i, j in it1:
-                dat_path = os.path.join(args.data_dir, f'{dats[i]}{zexts[j]}')
-                print(f'|.... look for {dat_path}')
-                if os.path.exists(dat_path):
-                    local_tar_path = dat_path
-                    print(f'|.... local {dat_path} already EXISTS !!! ')
-                    break
-
-        remote_tar_path = None
-        if not local_tar_path:
-            print(f'|... look for tar in remote site {args.dataorg_dir}')	
-            print(len(dats), len(zexts))
-            it2 = ((i, j) for i in range(len(dats)) for j in range(len(zexts)))
-            for i, j in it2:
-                dat_path = os.path.join(args.gdata, f'{dats[i]}{zexts[j]}')
-                if os.path.exists(dat_path):
-                    remote_tar_path = dat_path
-                    print(f'|... remote {dat_path} already EXISTS !!! ')
-                    break
-
-        print(f'|... local_tar_path EXISTS : {local_tar_path}')
-        print(f'|... remote_tar_path EXISTS : {remote_tar_path}')
-
-        if remote_tar_path and not local_tar_path:
-            print(f'|===> remote {remote_tar_path} to local {local_tar_path}')
-            tarname = os.path.basename(os.path.normpath(remote_tar_path))
-            print(tarname)
-            local_tar_path = os.path.join(args.data_dir, tarname)
-            print(f'|... copy {remote_tar_path} to {local_tar_path}')
-            from shutil import copyfile
-            copyfile(remote_tar_path, local_tar_path)
-
-        if local_tar_path:
-            print("|... unzip to data")
-            tree_root = None
-            print(f'|... unzip to data local_tar_path {local_tar_path}')
-            # onutil.gunzip(file_basename, file_id, destination, results_dir)
-            onutil.tunzip(None, local_tar_path, args.data_dir, tree_root)
-    
-        # check data folder
-        untarfolder = os.path.join(args.data_dir, dat)
-        print(f'|... untar folder {untarfolder} exists" {os.path.exists(untarfolder)}')
 #
 #
 #   nndanboo
@@ -1078,18 +915,35 @@ def nndanboo(args, kwargs):
         args.DATASET = 'DanbooRegion2020'
     else:
         args.PROJECT = 'danregion'
-        args.DATASET = 'danregion' # 'DanbooRegion2020'
+        args.DATASET = 'danregion'
 
     xp = getxp(vars(args))
     args = onutil.pargs(xp)
     onutil.ddict(vars(args), 'args')
 
     if args.verbose > 0: print(f"|===> nndanboo: {args.PROJECT}  \n ")
-
-    if 1: # tree
+    #
+    #
+    #   tree
+    #
+    if 1:
         # [1] https://github.com/lllyasviel/DanbooRegion
         # [2] https://drive.google.com/drive/folders/1ihLt6P7UQRlaFtZUEclXkWC9grmEXEUK?usp=sharing
-
+        # 
+        # will get data from dataorg_dir
+        #
+        # will create project_dir under proto_dir
+        # will create code_dir under project_dir
+        # will create ckpt_dir under project_dir (models, weights)
+        # will create data_dir under project_dir
+        # will create results_dir under project_dir
+        #
+        # the data_dir will have train, test and val subfolders
+        # the train_dir will have pict, draw and predict subfolders
+        # the test_dir will have pict, draw and predict subfolders
+        # 
+        # segment will save skeletom, region and flatten to results_dir
+        #
         assert(os.path.exists(args.dataorg_dir))
 
         args.dataorg_train_dir = os.path.join(args.dataorg_dir, 'train')
@@ -1109,7 +963,6 @@ def nndanboo(args, kwargs):
         else:
             _glab = os.path.join(args.gdata, '../glab/', args.MNAME, args.PROJECT)
             args.ckpt_dir = os.path.normpath(os.path.join(_glab, 'Models'))
-
 
         args.data_dir = os.path.join(args.data_dir, '') # in project dir
         args.data_train_pict_dir = os.path.join(args.data_train_dir, 'pict')
@@ -1152,7 +1005,7 @@ def nndanboo(args, kwargs):
                     zip -FF DanbooRegion2020.zip --out DanbooRegion2020_FF.zip\n \
                     unzip DanbooRegion2020_FF.zip\n \
             ')
-            exit()
+        assert os.path.exists(args.dataorg_dir), f'org data missing'
 
         os.makedirs(args.proj_dir, exist_ok=True) 
         os.makedirs(args.code_dir, exist_ok=True) 
@@ -1165,11 +1018,14 @@ def nndanboo(args, kwargs):
         os.makedirs(args.data_test_pict_dir, exist_ok=True) 
         os.makedirs(args.data_test_draw_dir, exist_ok=True) 
         os.makedirs(args.data_test_predict_dir, exist_ok=True) 
-
-    if 1: # config
-
-        args.ckpt_prefix = 'ckpt-'
-
+    #
+    #
+    #   config
+    #
+    if 1:
+        # 
+        # defining args here they cannot be set in command line tbr
+        #
         args.dim = 512
         args.show_size = 512
         args.height = 512
@@ -1180,8 +1036,15 @@ def nndanboo(args, kwargs):
         args.buffer_size = 10000
         args.batch_size = 1
         args.max_epochs = 601
+
         args.gpu = 1 # _e_
-        args.input_shape = [args.height, args.width, args.input_channels]		
+        args.input_shape = [args.height, args.width, args.input_channels]
+
+        args.dosegment = 1 # call segment. img in function
+
+        args.ckptidx = None # -1 : get no ckpt, None for latest
+
+        args.predict = 0 # do not predict test imgs
 
     if args.verbose > 0: print(f"|---> nndanboo config:  \n \
         args.show_size: {args.show_size}, \n \
@@ -1195,9 +1058,16 @@ def nndanboo(args, kwargs):
     ")
     #
     #
-    if 1: # git
+    #   git
+    #
+    if 1:
+        #
+        #   get git repo or fail if folder exists and non empty
+        #
         onutil.get_git(args.AUTHOR, args.GITPOD, args.code_dir)
     #
+    #   
+    #   set to code dir. other folders will be abs paths
     #
     assert os.path.exists(args.code_dir), "code_dir not found"        
     os.chdir(args.code_dir) # _e_ not std
@@ -1205,21 +1075,22 @@ def nndanboo(args, kwargs):
     #
     # visualize region image with image color map
     #
-    if args.visual > 1: 
+    if args.visual > 1: # visual: [-1,n]
 
-        if 0: # py command
+        if 0: # run py command
             cmd = f"python visualize.py ./X.image.png ./X.region.png"
             print("cmd %s" %cmd)
             os.system(cmd)
-        else: # cv2
+        else: # call cv2 function
             color_map = cv2.imread('./X.image.png') # _e_
             region_map = cv2.imread('./X.region.png')
             cv2.imshow('vis', onlllyas.vis(region_map, color_map))
             cv2.waitKey(0)
     #
     #
+    #   org data => _train_ data 
     #
-    if 1: # org to _train_ data 
+    if 1:
 
         if args.verbose > 0: print(f'|---> nndanregion: org => data train \n \
             \n \
@@ -1246,17 +1117,18 @@ def nndanboo(args, kwargs):
 
         # count max and exclude list _e_
         if  qinfiles > qoutfiles:
-            print(f'|... processFolder from ({qinfiles}) onto ({qoutfiles}) files ')
+            print(f'|...> processFolder from ({qinfiles}) onto ({qoutfiles}) files ')
             args.exclude = [os.path.basename(item) for item in onfile.path_to_paths(args.output_folder)]
             if args.verbose > 2: 
                 print(args.exclude)
             onset.processFolder(args) # copy inputs to train
         else:
-            print(f'|... train no processFolder !!!!. files already there ')
+            print(f'|...> train no processFolder !!!!. files already there ')
     #
     #
+    #   org data => _test_ data 
     #
-    if 1: # org to _test_ data 
+    if 1:
 
         if args.verbose > 0: print(f'|---> nndanregion org test to data q: \n \
             org image: {onfile.qfiles(args.dataorg_test_dir, "*.png")} \n \
@@ -1285,11 +1157,12 @@ def nndanboo(args, kwargs):
             args.exclude = [os.path.basename(item) for item in onfile.path_to_paths(args.output_folder)]
             onset.processFolder(args) # copy inputs to test
         else:
-            print(f'|... test no processFolder !!!!. files already there ')
+            print(f'|...> test no processFolder !!!!. files already there ')
     #
     #
+    #   probe images to skeletons
     #
-    if 0: # probe images to skeletons
+    if args.visual > 2:
 
         basename = 'region_test.png'
         imgpath = os.path.join(args.code_dir, basename)
@@ -1313,8 +1186,9 @@ def nndanboo(args, kwargs):
             cv2.waitKey(0)
     #
     #
+    #   (train) data => skeletons
     #
-    if 1: # (train) data to skeletons
+    if 1:
 
         if args.verbose > 0: print(f'|===> skeletonize_all')
 
@@ -1357,24 +1231,26 @@ def nndanboo(args, kwargs):
                         out_path = os.path.join(_todir,f'{prefix}{loutpatt}.{ext}',)
                         region = cv2.imread(path)
 
-                        if 0: print(f'|...> skeleton  region  {np.shape(region)} to {_todir}')
-                        skeleton = onlllyas.get_skeleton(region, 
-                            filterstrength=filterstrength
-                        )
+                        if 0: 
+                            print(f'|...> skeleton  region  {np.shape(region)} to {_todir}')
 
-                        if 0: print(f'|...> skeleton  shape  {np.shape(skeleton)}')
-                        print(f'|...> write   {out_path}   {str(i + 1)} /{qinfiles}')
+                        skeleton = onlllyas.get_skeleton(region, filterstrength=filterstrength)
+
+                        if 0: 
+                            print(f'|...> skeleton  shape  {np.shape(skeleton)}')
+                            print(f'|...> write   {out_path}   {str(i + 1)} /{qinfiles}')
                         skeleton = cv2.cvtColor(skeleton,cv2.COLOR_GRAY2RGB)					
                         cv2.imwrite(out_path, skeleton)
                     else:
                         print(f'prefix: {prefix} already in target')
 
             else:
-                print(f'|... no process. out files {qoutfiles} in')
+                print(f'|...> no process. out files {qoutfiles} in')
     #
     #
+    #   skeletom => regions show
     #
-    if 0: # skeletom to regions show
+    if args.visual > 2: # skeletom => regions show
 
         basename = 'danskel.jpg'
         skeleton_path = os.path.join(args.code_dir, basename)
@@ -1396,8 +1272,9 @@ def nndanboo(args, kwargs):
             cv2.waitKey(0)
     #
     #
+    #   model
     #
-    if 1: # model
+    if 1:
 
         if args.verbose > 0: print(f'|===> model:   \n \
             models_dir = {args.models_dir},\n \
@@ -1414,71 +1291,71 @@ def nndanboo(args, kwargs):
             results_dir = args.results_dir,
             ckpt_dir = args.ckpt_dir,
             ckpt_prefix = args.ckpt_prefix,
-            ckptidx = None  , # -1 : get no ckpt, None for latest
+            ckptidx = args.ckptidx,
             input_shape = args.input_shape,
             output_shape = args.input_shape,
         )
     #
     # 3. segment
     #
-    if 1:	# python segment.py ./emilia.jpg
-
-        path = os.path.join(args.code_dir, 'emilia.jpg')
-        path = os.path.join(args.code_dir, 'danimage.jpg')
-        path = os.path.join(args.code_dir, 'danskel.jpg')
-        assert os.path.exists(path), f'{path} could not be found'
-
-        basename = os.path.basename(path)
-        assert os.path.exists(path), f"path {path} does not exist"
-
-        if args.verbose: print(f'|---> segment \n \
-            basename: {basename} \n \
-            skeleton_path: {path} \n \
-        ')
-
-        # config
-        #
+    if args.dosegment:	# python segment.py ./emilia.jpg
         img1_max_size = 512
         img2_max_size = 512
+        pads = 7
+        ksize = 3.0 # Size object representing the size of the kernel      
 
-        img1 = cv2.imread(path)
-        img1 = onlllyas.skeleton_to_regions(img1)
+        if 0:
+            uri = os.path.join(args.code_dir, 'emilia.jpg')
+            uri = os.path.join(args.code_dir, 'danimage.jpg')
+            uri = os.path.join(args.code_dir, 'danskel.jpg')
+        else:
+            local_path = os.path.join(args.code_dir, 'pablogallo_girl-reading.jpg')
+            uri_path = 'https://raw.githubusercontent.com/sifbuilder/eodoes/master/packages/eodoes-eodo-pix2pix/media/pablogallo_girl-reading.jpg'
+            if not os.path.exists(local_path):
+                onutil.uriget(uri_path, local_path)
+            uri = local_path
+
+        assert os.path.exists(uri), f'{uri} could not be found'
+        img1 = cv2.imread(uri)
+        img1 = onlllyas.skeleton_to_regions(img1) # bgr (927, 770, 3)
+        img1 = cv2.resize(img1, (img1_max_size,img1_max_size)) # (512, 512, 3)
         img1 = onlllyas.min_resize(img1, img1_max_size)
-        if 0: onplot.cv_img(img1, title=f'regions {basename}')
-
-        #raw_img = cv2.imread(path, cv2.IMREAD_GRAYSCALE) # go_srcnn
-        raw_img = cv2.imread(path) # go_srcnn
-        raw_img = onlllyas.min_resize(raw_img, img1_max_size)
-        if 0: onplot.cv_img(raw_img, title=f'raw_img {basename} ')
-
-        #raw_img = raw_img.clip(0, 255)
-        #raw_img = raw_img.astype(np.uint8) # (img1_max_size, img1_max_size, 3)
-        #if 0: onplot.pil_show_rgb(raw_img)
-
-        #pads = 7
-        #raw_img = raw_img[np.newaxis,:,:,:]
-        #raw_img = tf.pad(raw_img / 255.0, [[0, 0], [pads, pads], [pads, pads], [0, 0]], 'REFLECT')
-        #if 1: onplot.pil_show_nba(raw_img)
-        
-        #img1 = model.generator(raw_img, training=True)       
-        #img1 = img1[:, pads * 2:-pads * 2, pads * 2:-pads * 2, :][:, 1:-1, 1:-1, :] * 255.0
-
+        if args.visual > 1: 
+            onplot.cv_img(img1, title=f'regions {uri}')
         img1 = img1[np.newaxis,:,:,:]
+        #
+        #   generate
+        #
         img1 = model.generator(img1, training=True)
-        img_rgb = onformat.nnba_to_rgb(img1)
-        if 1: onplot.cv_img(img_rgb, title=f'gen rgb img1')            
 
-        img2 = onlllyas.min_resize(raw_img, img2_max_size)        
-        if 0: onplot.cv_img(img2, title=f'img2')
-        
-        transposed = onlllyas.go_transposed_vector(onlllyas.mk_resize(raw_img, 64))
+        #img1 = img1[:, pads * 2:-pads * 2, pads * 2:-pads * 2, :][:, 1:-1, 1:-1, :] * 255.0
+        img_rgb = onformat.nnba_to_rgb(img1)
+        if args.visual > 1: 
+            onplot.cv_img(img_rgb, title=f'gen rgb img1')            
+
+        #img2 = cv2.imread(uri, cv2.IMREAD_GRAYSCALE) # go_srcnn
+        img2 = cv2.imread(uri) # go_srcnn bgr (927, 770, 3)
+        img2 = cv2.resize(img2, (img2_max_size,img2_max_size)) # (512, 512, 3)
+        img2 = onlllyas.min_resize(img2, img1_max_size)
+        if args.visual > 1: 
+            onplot.cv_img(img2, title=f'img2 {uri} ')
+
+        #img2 = img2[np.newaxis,:,:,:]
+        #img2 = tf.pad(img2 / 255.0, [[0, 0], [pads, pads], [pads, pads], [0, 0]], 'REFLECT')
+        #if 1: onplot.pil_show_nba(img2)
+
+        if args.verbose > 0: 
+            print(f'|...> img2 shape: {np.shape(img2)}') # (512, 512, 3)
+
+        transposed = onlllyas.go_transposed_vector(onlllyas.mk_resize(img2, 64))
         height = onlllyas.d_resize(transposed, img2.shape) * 255.0
 
         final_height = height.copy()
 
-        height += (height - cv2.GaussianBlur(height, (0, 0), 3.0)) * 10.0
+        height += (height - cv2.GaussianBlur(height, (0, 0), ksize)) * 10.0
         height = height.clip(0, 255).astype(np.uint8)
-        if 1: onplot.cv_img(height, title=f'height')
+        if args.visual > 1:
+            onplot.cv_img(height, title=f'height')
 
         marker = height.copy() # (img2_max_size, img2_max_size, 3)
         marker[marker > 135] = 255
@@ -1486,7 +1363,7 @@ def nndanboo(args, kwargs):
 
         marker = cv2.cvtColor(marker, cv2.COLOR_BGR2GRAY) # marker gray
         fills = onlllyas.get_fill(marker / 255)
-        if 0:
+        if args.visual > 1:
             print(f'segment fills: {fills}')
 
         ## *********************************************
@@ -1526,28 +1403,30 @@ def nndanboo(args, kwargs):
         region_path = os.path.join(args.results_dir, 'current_region.png')
         flatten_path = os.path.join(args.results_dir, 'current_flatten.png')
 
-        if 1: onplot.cv_img(skeleton, title=f'skeleton')
-        if 1: onplot.cv_img(region, title=f'region')
-        if 1: onplot.cv_img(flatten, title=f'flatten')
+        if args.visual > 0:
+            onplot.cv_img(skeleton, title=f'skeleton')
+            onplot.cv_img(region, title=f'region')
+            onplot.cv_img(flatten, title=f'flatten')
 
-        print(f'save {skeleton_path}')
-        print(f'save {region_path}')
-        print(f'save {flatten_path}')
+        if args.verbose > 0:
+            print(f'|...> save {skeleton_path}')
+            print(f'|...> save {region_path}')
+            print(f'|...> save {flatten_path}')
 
         cv2.imwrite(skeleton_path, skeleton)
         cv2.imwrite(region_path, region)
         cv2.imwrite(flatten_path, flatten)
 
     # 3b. predict test images
-    
-    if 0:	# 
-        
+    #
+    if args.predict > 0:	# 
+        #
         paths = Onfile.folder_to_paths(args.data_test_pict_dir)
 
         idx = 0
         for n, path in enumerate(paths):
             basename = os.path.basename(os.path.normpath(path))
-            print(f'|===> predict test images path {path}')
+            if args.verbose > 0: print(f'|===> predict test images path {path}')
 
             #img = tf.io.read_file(path)
             #img = tf.image.decode_jpeg(img)
@@ -1570,11 +1449,11 @@ def nndanboo(args, kwargs):
                 cv2.waitKey(0)
 
             save_image_path = os.path.join(args.data_test_predict_dir, basename)
-            print(f'|... save {save_image_path}')            
+            if args.verbose > 0:  print(f'|...> save {save_image_path}')            
             onfile.rgbs_to_file([img], scale=1, rows=1, save_path=save_image_path)
-
-    if 0: # train
-
+    #
+    if args.TRAIN > 0: # train
+        #
         if 1: #  data => dataset (train) # paths_to_dataset_22
 
             #pths_train = [args.data_train_draw_dir, args.data_train_pict_dir]
@@ -1583,7 +1462,7 @@ def nndanboo(args, kwargs):
             pths_train = [args.data_train_pict_dir, args.data_train_draw_dir]
             patts = ['*.region.png', '*.skeleton.png']
 
-            print(f'|===> nndanregion train dataset:  \n \
+            if args.verbose > 0: print(f'|===> nndanregion train dataset:  \n \
                 pths_train {pths_train} \n \
                 train_draw ({onfile.qfiles(args.data_train_draw_dir, "*.png")}) \n \
                 train_pict ({onfile.qfiles(args.data_train_pict_dir, "*.png")}) \n \
@@ -1596,7 +1475,7 @@ def nndanboo(args, kwargs):
 
         if 1: #  data => dataset (test) --- # paths_to_dataset_22
 
-            print(f'|---> nndanregion datasets:  \n \
+            if args.verbose > 0: print(f'|---> nndanregion datasets:  \n \
                 test_draw ({onfile.qfiles(args.data_test_draw_dir, "*.png")}) \n \
                 test_pict ({onfile.qfiles(args.data_test_pict_dir, "*.png")}) \n \
             ')
@@ -1613,12 +1492,12 @@ def nndanboo(args, kwargs):
                 height=args.height, width=args.width, 
                 buffer_size=args.buffer_size, batch_size=1) # 1 per batch in test dataset _e_
 
-        if 0: # probe train dataset
+        if args.visual > 2: # probe train dataset
 
-            print(f'|===> probe nndanregion train dataset')
+            if args.verbose > 0:print(f'|===> probe nndanregion train dataset')
 
             for im,re in train_dataset.take(1):
-                print(f'|... item shape in dataset: {np.shape(im)} {np.shape(re)}')
+                print(f'|...> item shape in dataset: {np.shape(im)} {np.shape(re)}')
 
                 img1 = onformat.nnba_to_rgb(im)
                 img2 = onformat.nnba_to_rgb(re)
@@ -1626,217 +1505,37 @@ def nndanboo(args, kwargs):
                 display_list = [img1, img2]
                 onplot.pil_show_rgbs(display_list, scale=1, rows=1) 
 
-        print(f'|===> training loop:')
+        if args.verbose > 0:print(f'|===> training loop:')
         model.fit(train_dataset, test_dataset, args)     # , summary_writer
 
-    print('|===> end danboo')
-#
-#
-#   nnart
-#
-def nnart(args, kwargs):
-# https://github.com/memo/webcam-pix2pix-tensorflow
-
-    args = onutil.pargs(vars(args))
-    args.PROJECT = 'art'
-    args.DATASET = 'danregion'
-    xp = getxp(vars(args))
-    args = onutil.pargs(xp)
-    onutil.ddict(vars(args), 'args')
-
-    print(f"|---> nnart: {args.PROJECT}:  \n ")
-
-    if 1: # tree
-        # ckpt_dir
-        ckpt_dir = args.models_dir
-        ckpt_prefix = 'ckpt-'
-
-        # data
-        args.data_train_dir = os.path.join(args.data_dir, 'train')
-        args.data_test_dir = os.path.join(args.data_dir, 'test')
-
-        # dataset
-        args.dataset_train_B_dir = os.path.join(args.dataset_dir, 'train_B_dir')
-        args.dataset_train_A_dir = os.path.join(args.dataset_dir, 'train_A_dir')
-        args.dataset_test_B_dir = os.path.join(args.dataset_dir, 'test_B_dir')
-        args.dataset_test_A_dir = os.path.join(args.dataset_dir, 'test_A_dir')
-
-        os.makedirs(args.models_dir, exist_ok=True)
-        os.makedirs(args.logs_dir, exist_ok=True)
-
-        # raw data src
-        os.makedirs(args.dataorg_dir, exist_ok=True)
-        os.makedirs(args.data_dir, exist_ok=True)
-        os.makedirs(args.data_train_dir, exist_ok=True) 
-        os.makedirs(args.data_test_dir, exist_ok=True)	
-
-        os.makedirs(args.dataset_dir, exist_ok=True)
-        os.makedirs(args.dataset_train_B_dir, exist_ok=True) 
-        os.makedirs(args.dataset_train_A_dir, exist_ok=True) 
-        os.makedirs(args.dataset_test_B_dir, exist_ok=True) 
-        os.makedirs(args.dataset_test_A_dir, exist_ok=True) 
-        os.makedirs(args.records_dir, exist_ok=True)
-
-    if args.verbose: print(f"|---> nnart tree: {args.PROJECT}:  \n \
-    cwd: {os.getcwd()} \n \
-    args.PROJECT:        {args.PROJECT} \n \
-    args.DATASET:        {args.DATASET} \n \
-    args.proj_dir:       {args.proj_dir}, data and code will be in args.proj_dir\n \
-    args.logs_dir:       {args.logs_dir} {onfile.qfiles(args.models_dir, '*')} logs \n \
-    args.records_dir:    {args.records_dir} :-: {onfile.qfiles(args.records_dir, '*')} files \n \
-    args.models_dir (ckpts): {args.models_dir} :-: {onfile.qfiles(args.models_dir, '*.index')} \n \
-    args.dataorg_dir:    {args.dataorg_dir} :-: {onfile.qfiles(args.dataorg_dir, '*.jpg')}  jpgs \n \
-    \n \
-    args.data_dir:       {args.data_dir}: {onfile.qfiles(args.data_dir, '*')} files \n \
-    args.data_train_dir: {args.data_train_dir} :-: {onfile.qfiles(args.data_train_dir, '*.jpg')} \n \
-    args.data_test_dir:  {args.data_test_dir} :-: {onfile.qfiles(args.data_test_dir, '*.jpg')} \n \
-    \n \
-    args.dataset_dir:    {args.dataset_dir} :-: {onfile.qfolders(args.dataset_dir)} folders\n \
-    args.dataset_train_B_dir (re): {args.dataset_train_B_dir} :-: {onfile.qfiles(args.dataset_train_B_dir, '*.jpg')}  \n \
-    args.dataset_train_A_dir (in): {args.dataset_train_A_dir} :-: {onfile.qfiles(args.dataset_train_A_dir, '*.jpg')}  \n \
-    args.dataset_test_B_dir (re): {args.dataset_test_B_dir} :-: {onfile.qfiles(args.dataset_test_B_dir, '*.jpg')}  \n \
-    args.dataset_test_A_dir (in): {args.dataset_test_A_dir} :-: {onfile.qfiles(args.dataset_test_A_dir, '*.jpg')}  \n \
-    ")
-
-    if 0: # clear tree
-
-        print(f'|---> clear tree at {args.proj_dir}')
-        onfile.clearfolder(args.proj_dir, inkey=args.PROJECT)
-
-    if 1: # data params
-
-        args.img_height = 512
-        args.img_width = 512
-
-        args.max_size=512
-
-        args.height=args.img_height
-        args.width=args.img_height
-        args.input_shape = [args.height, args.width, args.input_channels]
-
-    if args.verbose: print(f"|---> config  \n \
-        args.height:         {args.height} \n \
-        args.width:          {args.width} \n \
-        args.input_channels: {args.input_channels} \n \
-        args.buffer_size:    {args.buffer_size} \n \
-        args.batch_size:     {args.batch_size} \n \
-        args.input_shape:    {args.input_shape} \n \
-    ")
-
-    if 1: # raw to paths
-
-        trainpc = 0.9
-        testpc = 0.1
-        forcecopy = 0
-
-        input_paths = onfile.path_to_paths(args.dataorg_dir, patts=['*.jpg', '*.jpeg', '*.png'])
-        qimgs = len(input_paths)
-        q_train_imgs = int(qimgs * trainpc )
-        q_test_imgs = int(qimgs * testpc )		
-
-        train_paths = input_paths[0:q_train_imgs]
-        test_paths = input_paths[q_train_imgs:qimgs]		
-
-        print(f'|--->  raw to data - keep img file names \n \
-        from {args.dataorg_dir}, {qimgs} images \n \
-            to data_train_dir: {args.data_train_dir} {q_train_imgs} ({trainpc} %) \n \
-            to data_test_dir:  {args.data_test_dir}  {q_test_imgs} ({testpc} %)\n \
-        ')
-        
-        train_roots = [onutil.get_rootid(path) for path in train_paths]
-        if all(root.isdigit() for root in train_roots):
-            print(f'|---> sort numeric')
-            train_paths = sorted(train_paths, key=lambda path: int(onutil.get_rootid(path)))
-        else:
-            print(f'|---> sort alphabetic')
-            train_paths = sorted(train_paths)
-
-        assert len(train_paths) > 0, f'train files missing'
-
-        test_roots = [onutil.get_rootid(path) for path in test_paths]
-        if all(root.isdigit() for root in test_roots):
-            test_paths = sorted(test_paths, key=lambda path: int(onutil.get_rootid(path)))
-        else:
-            test_paths = sorted(test_paths)
-
-        assert len(test_paths) >= 0, f'test files may be missing'
-
-    if 0: # raw to formed data (dataorg_dir => data_train_dir, data_test_dir)
-        for i,path in enumerate(train_paths):
-            rootid = int(onutil.get_rootid(path))
-            rootfilled = onutil.nameint(rootid)
-            ext = os.path.splitext(path)[-1]
-
-            out_path = os.path.join(args.data_train_dir, f'img{rootfilled}{ext}')
-
-            print(f"|---> {i} {rootfilled} {path} {out_path}")
-            img = ondata.path_to_formed_pair(path)
-            img.save(os.path.join(out_path))
-
-        for i,path in enumerate(test_paths):
-            rootid = int(onutil.get_rootid(path))
-            rootfilled = onutil.nameint(rootid)
-            ext = os.path.splitext(path)[-1]
-
-            out_path = os.path.join(args.data_test_dir, f'img{rootfilled}{ext}')
-
-            print(f"{i} {rootfilled} {path} {out_path}")
-            img = ondata.path_to_formed_pair(path)
-            img.save(os.path.join(out_path))
-
-        assert len(onfile.qfiles(args.data_train_dir)) > 0, f'train data files missing'
-        assert len(onfile.qfiles(args.data_test_dir)) > 0, f'test data files missing'
-
-    if 1: # model
-
-        print('|---> gan model')
-        gan = GAN(
-            models_dir = args.models_dir,
-            logs_dir = args.logs_dir,
-            ckpt_dir = ckpt_dir,
-            #ckpt_prefix = ckpt_prefix,
-            input_shape = args.input_shape,
-            output_shape = args.input_shape,
-        )
-
-    if 1: #  formed => datasets 11
-
-        print(f'|===> to datasets 11')
-        #train_dataset = path_to_dataset_11(
-        train_dataset = paths_to_dataset(
-            args.data_train_dir, 
-            '*.png', 
-            batch_size=4)
-        #test_dataset = path_to_dataset_11(
-        test_dataset = paths_to_dataset(
-            args.data_test_dir, 
-            '*.png', 
-            batch_size=4)
-
-        print(f'|---> train_dataset {type(train_dataset)}')
-        print(f'|---> test_dataset {type(test_dataset)}')
-    
-    if 1: # train
-
-        print('|===> run the training loop')
-        gan.fit(train_dataset, test_dataset, args)     # , summary_writer
-
-    print(f'|===> end nnart')
+    if args.verbose > 0:print('|===> end danboo')
 #
 #
 #   nncrys - 22
 #   
 def nncrys(args, kwargs):
 
-    args = onutil.pargs(vars(args))
-    args.PROJECT = 'crystals'
-    args.DATASET = 'quimica_tech'
-    args.LOCALLAB = 0
-    xp = getxp(vars(args))
-    args = onutil.pargs(xp)
-    onutil.ddict(vars(args), 'args')
+    if 1:
+        args = onutil.pargs(vars(args))
+        args.PROJECT = 'crystals'
+        args.DATASET = 'quimica_tech'
+        args.LOCALLAB = 0
+        xp = getxp(vars(args))
+        args = onutil.pargs(xp)
+        onutil.ddict(vars(args), 'args')
+    else:
+        args = onutil.pargs(vars(args))
+        args.PROJECT = 'crystals'
+        args.DATASET = 'quimica_tech'
+        args.LOCALLAB = 1
+        xp = getxp(vars(args))
+        args = onutil.pargs(xp)
+        onutil.ddict(vars(args), 'args')
 
-    print(f"|---> nncrys: {args.PROJECT}:  \n ")
+    if args.verbose > 0: print(f'|===> nncrys: {args.PROJECT} \n \
+        args.PROJECT:         {args.PROJECT} \n \
+        args.LOCALLAB:         {args.LOCALLAB} \n \
+    ')
 
     if 1: # tree
         assert(os.path.exists(args.dataorg_dir))
@@ -1889,10 +1588,10 @@ def nncrys(args, kwargs):
     args.records_dir:    {args.records_dir} :-: {onfile.qfiles(args.records_dir, '*')} files \n \
     args.models_dir:     {args.models_dir} :-: {onfile.qfiles(args.models_dir, '*.index')} snaps \n \
     ")
-
+    #
+    #
+    #
     if 1: # config
-
-        args.ckpt_prefix = 'ckpt-'
 
         args.img_height = 512
         args.img_width = 512
@@ -1904,7 +1603,9 @@ def nncrys(args, kwargs):
         args.batch_size=1
         args.input_shape = [args.height, args.width, args.input_channels]
 
-    if args.verbose: print(f'|--->  {args.PROJECT}: config  \n \
+        args.makegif = 0 # make gif out of results: all generatd imgs with patterns
+
+    if args.verbose > 0: print(f'|--->  {args.PROJECT}: config  \n \
         args.height:         {args.height} \n \
         args.width:          {args.width} \n \
         args.max_size:       {args.max_size} \n \
@@ -1913,13 +1614,19 @@ def nncrys(args, kwargs):
         args.batch_size:     {args.batch_size} \n \
         args.input_shape:    {args.input_shape} \n \
     ')
-
-    if 0: # clear tree
+    #
+    #
+    #   clear file tree
+    #
+    if args.RESETCODE > 1: # clear file tree
 
         print(f"clear tree at {args.proj_dir}")
-        onfile.clearfolder(args.proj_dir, inkey=args.PROJECT)
-
-    if 0: # make gif out of results: all generatd imgs with patterns
+        onfile.folder_to_void(args.proj_dir, inkey=args.PROJECT)
+    #
+    #
+    #   make gif out of results: all generatd imgs with img patterns
+    #
+    if 0:
 
         imgpatts = ['0012*.png']
         dstpath = os.path.join(args.results_dir, 'out.gif')
@@ -1932,74 +1639,67 @@ def nncrys(args, kwargs):
             nresults: {nresults} \n \
             srcdir: {srcdir} \n \
         ")
-        onvid.folder_to_gif(srcdir, dstpath, patts=imgpatts)
+        onvid.folder_to_gif(srcdir, dstpath, patts=imgpatts, args=args)      
+    #
+    #   
+    #   raw images to data (dataorg_dir => data_train_dir, data_test_dir)
+    #
+    #   all img files in dataorg_dir
+    #   separate train and test imgs
+    #
+    if 1: # raw images to data
 
-    if 1: # 	model
-
-        print(f"|===> get model from {args.models_dir} \n ")		
-        model = GAN( 
-            models_dir = args.models_dir,
-            logs_dir = args.logs_dir,
-            results_dir = args.results_dir,
-            ckptidx = -1,
-            ckpt_dir = args.ckpt_dir,
-            ckpt_prefix = args.ckpt_prefix,
-            input_shape = args.input_shape,
-            output_shape = args.input_shape,
-        )
-
-    if 1: # raw images to data (dataorg_dir => data_train_dir, data_test_dir)
-
-        trainpc = 0.9
-        testpc = 0.1
+        # assume all images in args.dataorg_dir
+        trainpc = 0.9   # imgs to train
+        testpc = 0.1    # imgs to test
     
         input_paths = onfile.folder_to_paths(args.dataorg_dir)
-        q_from_imgs = len(input_paths)
+        q_from_imgs = len(input_paths) # total number of images
+        q_from_train_imgs = int(q_from_imgs * trainpc) # number of train images
+        q_from_test_imgs = int(q_from_imgs * testpc) # number of test images
 
-        q_train_imgs = int(q_from_imgs * trainpc)
-        q_test_imgs = int(q_from_imgs * testpc)
+        train_paths = input_paths[0:q_from_train_imgs]          # [0,qt] train paths
+        test_paths = input_paths[q_from_train_imgs:q_from_imgs] # [qt,q]  test paths
 
-        train_paths = input_paths[0:q_train_imgs]
-        test_paths = input_paths[0:q_test_imgs]
+        q_to_train_imgs = onfile.qfiles(args.data_train_dir) # train imgs in target folder
+        q_to_test_imgs = onfile.qfiles(args.data_test_dir)   # test imgs in target folder
 
-        q_from_train_imgs = len(train_paths)
-        q_from_test_imgs = len(test_paths)
-
-        q_to_train_imgs = onfile.qfiles(args.data_train_dir)
-        q_to_test_imgs = onfile.qfiles(args.data_test_dir)
-
-        print(f"|===>  org raw to data \n \
-            {len(train_paths)} to {args.data_train_dir} with {q_to_train_imgs} \n \
-            {len(test_paths)} to {args.data_test_dir} with {q_to_test_imgs} \n \
+        if args.verbose > 0: print(f"|===>  org raw to data \n \
+            {len(train_paths)} to {args.data_train_dir} with already {q_to_train_imgs} \n \
+            {len(test_paths)} to {args.data_test_dir} with  already {q_to_test_imgs} \n \
         ")
 
         # raw images to train data (args.dataorg_dir => args.data_train_dir)
 
         if not q_from_train_imgs == q_to_train_imgs:		
-            onfile.paths_to_folder_with_cv(train_paths, args.data_train_dir)
+            onfile.paths_to_folder_cv(train_paths, args.data_train_dir)
         else:
-            print(f"|... !!! train not copied. {args.data_train_dir} got them")
+            print(f"|...> !!! train not copied. {args.data_train_dir} got them")
 
         # raw images to test data (args.dataorg_dir => args.data_test_dir)
 
         if not q_from_test_imgs == q_to_test_imgs:			
-            onfile.paths_to_folder_with_cv(test_paths, args.data_test_dir)
+            onfile.paths_to_folder_cv(test_paths, args.data_test_dir)
         else:
-            print(f"|... !!! test not  copied. {args.data_test_dir} got them")
+            if args.verbose > 0: print(f"|...> !!! test not  copied. {args.data_test_dir} got them")
         
-        if 1:  # show raw images shapes
-            nuas = onfile.folder_to_nuas(args.data_train_dir)
-            n = np.random.randint(0, len(nuas))
-            print(f"|... data train image {n} shape: {np.shape(nuas[n])}")
-
-    if 1: # data to dataset B (data_dir => (train, test))
+        if args.verbose > 0:  # show random raw images shapes
+            n = np.random.randint(0, q_to_train_imgs)
+            path = train_paths[n]
+            nua = onfile.path_to_nua(path)
+            print(f'|...> data train image {n} shape: {np.shape(nua)}')
+    #
+    #
+    #   data to dataset B (data_dir => (train, test))
+    #
+    if 1: # data to dataset B
 
         args.keep_folder=True    
         args.process_type='crop_to_square'
         args.file_extension= 'jpg'
         args.name=1 # alpha name
 
-        print(f"|===> data to dataset B (real) \n \
+        if args.verbose > 0: print(f"|===> data to dataset B (real) \n \
             {args.data_train_dir} to {args.dataset_train_B_dir}   \n \
             {args.data_test_dir}  to {args.dataset_test_B_dir} \n \
             args.process_type:  {args.process_type} \n \
@@ -2015,7 +1715,7 @@ def nncrys(args, kwargs):
         q_from_train_imgs = onfile.qfiles(args.input_folder)
         q_to_train_imgs = onfile.qfiles(args.output_folder)
 
-        print(f'|==> data to dataset train: {args.process_type} \n \
+        if args.verbose > 0: print(f'|==> data to dataset train: {args.process_type} \n \
             {args.input_folder} ==> {args.output_folder} \n \
             q_from_train_imgs: {onfile.qfiles(args.input_folder)} \n \
             q_to_train_imgs: {onfile.qfiles(args.output_folder)} \n \
@@ -2024,16 +1724,9 @@ def nncrys(args, kwargs):
         if not q_from_train_imgs == q_to_train_imgs: # dir empty				
             onset.processFolder(args) # copy reals to train
         else:
-            print(f"|... nothing copied. {args.output_folder} not empty")
+            print(f"|...> nothing copied. {args.output_folder} not empty")
 
         assert onfile.qfiles(args.output_folder) > 0, f're train files not found {args.output_folder}'
-
-        # show train images shapes
-
-        if 1:
-            nuas = onfile.folder_to_nuas(args.dataset_train_B_dir)
-            n = np.random.randint(0, len(nuas))
-            print(f"|---> train image {n} shape: {np.shape(nuas[n])}")		
 
         # dataset to test data
 
@@ -2043,7 +1736,7 @@ def nncrys(args, kwargs):
         q_from_test_imgs = onfile.qfiles(args.input_folder)
         q_to_test_imgs = onfile.qfiles(args.output_folder)
 
-        print(f'|==> data to dataset test: {args.process_type} \n \
+        if args.verbose > 0: print(f'|==> data to dataset test: {args.process_type} \n \
             {args.input_folder} ==> {args.output_folder} \n \
             q_from_test_imgs: {onfile.qfiles(args.input_folder)} \n \
             q_to_test_imgs: {onfile.qfiles(args.output_folder)} \n \
@@ -2052,9 +1745,12 @@ def nncrys(args, kwargs):
         if not q_from_test_imgs == q_to_test_imgs: # dir empty				
             onset.processFolder(args) # copy reals to test
         else:
-            print(f"|... nothing copied. {args.output_folder} not empty")
-
-    if 1: # canny to dataset A ((train, test)B => (train, test)A)
+            print(f"|...> nothing copied. {args.output_folder} not empty")
+    #
+    #
+    #   canny to dataset A ((train, test)B => (train, test)A)
+    #
+    if 1:
 
         args.keep_folder=True    
         args.process_type='canny' # 'square' # 'canny-pix2pix'
@@ -2085,7 +1781,7 @@ def nncrys(args, kwargs):
         args.output_folder = args.dataset_train_A_dir
 
         if not os.listdir(args.output_folder): # dir empty
-            print(f"|---> train canny {args.process_type}: {args.input_folder}   \n \
+            if args.verbose > 0: print(f"|---> train canny {args.process_type}: {args.input_folder}   \n \
                 to {args.output_folder},  \n \
                 from imgs q: {onfile.qfiles(args.input_folder)}	\n \
                 to imgs q: {onfile.qfiles(args.output_folder)}	\n \
@@ -2139,54 +1835,61 @@ def nncrys(args, kwargs):
                     cv2.imwrite(os.path.join(args.output_folder, new_file), canny, [cv2.IMWRITE_JPEG_QUALITY, 90])
             
         else:
-            print(f"|---> nothing copied. {args.output_folder} not empty")
+            print(f"|---> nothing copied. {args.output_folder} not empty")        
+    #
+    #
+    #   data_train_dir => tf datasets 22
+    #
+    if 1: # train => dataset
+        args.patts = ['*.jpg', '*.jpg']
 
-    if 1: #  data_train_dir => tf datasets 22
-
-        print(f"|===> data to datasets 22")
+        if args.verbose > 0: print(f"|---> data to dataset 22  \n \
+                args.dataset_train_A_dir {args.dataset_train_A_dir},  \n \
+                args.dataset_train_B_dir {args.dataset_train_A_dir},  \n \
+                args.dataset_test_A_dir {args.dataset_test_A_dir},  \n \
+                args.dataset_test_B_dir {args.dataset_test_B_dir},  \n \
+                args.patts {args.patts},  \n \
+            ")
 
         pths_train = [args.dataset_train_A_dir, args.dataset_train_B_dir, ]
         pths_test = [args.dataset_test_A_dir,args.dataset_test_B_dir, ]
-        args.patts = ['*.jpg', '*.jpg']
 
-        print(f"|--->  data to dataset A:   \n \
+        if args.verbose > 0: print(f"|...>  data to dataset A:   \n \
             train_dataset from {pths_train} with args.patts {args.patts} \n \
             test_dataset from {pths_test} with args.patts {args.patts} \n \
             height {args.height} \n \
             width {args.width} \n \
             buffer_size {args.buffer_size} \n \
-            batch_size {args.height} \n \
+            batch_size {args.batch_size} \n \
         ")
 
-        #train_dataset = paths_to_dataset_22(
-        train_dataset = paths_to_dataset(
-            pths_train, 
-            args.patts, 
+        train_dataset = paths_to_dataset( pths_train, args.patts, 
             height=args.height, width=args.width, buffer_size=args.buffer_size, batch_size=args.batch_size)
         
-        #test_dataset = paths_to_dataset_22(
-        test_dataset = paths_to_dataset(
-            pths_test, 
-            args.patts, 
+        test_dataset = paths_to_dataset( pths_test, args.patts, 
             height=args.height, width=args.width, buffer_size=args.buffer_size, batch_size=args.batch_size)
+    #
+    #
+    #   probe train dataset sample
+    #
+    if args.visual > 0:
+        qn = 9
+        if args.verbose > 0: print(f"|===> probe train dataset with {qn} imgs")
 
-    if 0: # probe train dataset
-
-        print(f"|===> probe train dataset")
-
-        iterator = train_dataset.take(1) # <class 'tensorflow.python.data.ops.dataset_ops.TakeDataset'>
-        for elem in iterator:
-            #itemlist = list(elem)
+        elems = list(train_dataset.take(qn).as_numpy_iterator()) 
+        for elem in elems:
             example_input, example_target = elem
-            if args.verbose:
-                print(f'|---> probe train dataset {type(example_input)} {type(example_target)} ')
+            if args.verbose > 0: print(f'|...> item type: {type(example_input)} {type(example_target)} ')
+
             img1 = onformat.nnba_to_rgb(example_input)
             img2 = onformat.nnba_to_rgb(example_target)
-                      
             display_list = [img1, img2]
-            onplot.pil_show_rgbs(display_list, scale=1, rows=1) 
-
-    if 0: #   	data => tfrecords
+            onplot.pil_show_rgbs(display_list, scale=1, rows=1)   
+    #
+    #
+    #   data => tfrecords
+    #
+    if 0:
 
         print(f"|===> data to tfrecords   \n \
         from: {args.dataset_train_A_dir} \n \
@@ -2196,8 +1899,101 @@ def nncrys(args, kwargs):
         onrecord.folder_to_tfrecords(
             args.dataset_train_A_dir, 
             args.records_dir)
+    #
+    #
+    #
+    if 1: # 	model
 
-    if 1: # walk ckpt models
+        print(f"|===> get model from {args.models_dir} \n ")		
+        model = GAN( 
+            models_dir = args.models_dir,
+            logs_dir = args.logs_dir,
+            results_dir = args.results_dir,
+            ckptidx = None, # if None, will get last ckpt
+            ckpt_dir = args.ckpt_dir,
+            ckpt_prefix = args.ckpt_prefix,
+            input_shape = args.input_shape,
+            output_shape = args.input_shape,
+            visual = args.visual,
+            verbose = args.verbose,
+        )
+    #
+    #
+    #   probe random test img
+    #
+    if 1:
+        print(f'|===> probe random test img')
+
+        input_paths = onfile.folder_to_paths(args.dataset_test_A_dir)
+
+        qtoprobe = 9
+        for i in range(qtoprobe):
+            n = np.random.randint(0, len(input_paths))
+
+            path = input_paths[n]
+            
+            #img = tf.io.read_file(path)
+            #img = tf.image.decode_jpeg(img) # => shape=(256, 512, 3), dtype=uint8)
+            #img = tf.cast(img, tf.float32)
+
+            img = onfile.path_to_rgb_tf(path)
+            img = onformat.rgb_to_nnba(img)
+            img = model.generator(img, training=True)
+            print("|...> test img shape", np.shape(img))
+            if args.visual > 0: 
+                img_rgb = onformat.nnba_to_rgb(img)    # nbs to nua
+                onplot.pil_show_rgb(img_rgb, "pil_show_rgb")
+    #
+    #
+    #   probe train img
+    #
+    if 1:
+        print(f'|===> probe train img')
+
+        input_paths = onfile.folder_to_paths(args.dataset_train_A_dir)
+
+        qtoprobe = 9
+        for i in range(qtoprobe):
+            n = np.random.randint(0, len(input_paths))
+
+            path = input_paths[n]
+            
+            #img = tf.io.read_file(path)
+            #img = tf.image.decode_jpeg(img) # => shape=(256, 512, 3), dtype=uint8)
+            #img = tf.cast(img, tf.float32)
+
+            img = onfile.path_to_rgb_tf(path)
+            img = onformat.rgb_to_nnba(img)
+
+            img = model.generator(img, training=True)
+            print("|... train img shape", np.shape(img))
+
+            if args.visual > 0: 
+                img_rgb = onformat.nnba_to_rgb(img)    # nbs to nua
+                onplot.pil_show_rgb(img_rgb, "pil_show_rgb")
+    #
+    #
+    #
+    if 1: # walk ckpt models _e_
+
+        def getckptidx(ckptname): # ckpt-98, None, ckpt--1
+            idx = None
+            if ckptname:
+                m = re.search(r'([a-zA-Z_]*)-(.*)', ckptname)
+                if m and m.group(2):
+                    idx = m.group(2)
+            return idx
+
+        train_ds = 0
+        if train_ds == 1:
+            src_ds = 'train'
+            imginput_paths = onfile.folder_to_paths(args.dataset_train_A_dir) # train
+        else:
+            src_ds = 'test'
+            imginput_paths = onfile.folder_to_paths(args.dataset_test_A_dir) # test
+
+        imgpathidx = 0 # img idx in dataset
+        imgpath = imginput_paths[imgpathidx] #  path to first dataset img
 
         maxitems = 40
         patts = ['*.index']
@@ -2208,38 +2004,45 @@ def nncrys(args, kwargs):
             ckpt_manager.latest_checkpoint: {model.ckpt_manager.latest_checkpoint} \n \
             ckpt_manager.checkpoints: {model.ckpt_manager.checkpoints} \n \
             ckpt_manager.directory: {model.ckpt_manager.directory} \n \
-            patts: {patts} \n \
-            paths: {len(paths)} \n \
+            patts: {patts} dataset \n \
+            src_ds: {src_ds} dataset \n \
+            imgpathidx: {imgpathidx} \n \
+            imgpath: {imgpath} \n \
+            maxitems: {maxitems} \n \
         ')
 
         for path in paths:
             filename = os.path.basename(path)
             ckpt = filename.split('.')[0] # {prefix}-{ckptidx}.index => {prefix}-{ckptidx}
-            ckptidx = oncheck.getckptidx(ckpt)
+            ckptidx = getckptidx(ckpt)
 
         ckptidxs = []
         for path in paths:
             filename = os.path.basename(path)
             infix = filename.split('.')[0]
 
-            ckptidx = oncheck.getckptidx(infix)
+            ckptidx = getckptidx(infix)
 
             ckptidxs.append(int(ckptidx)) # if None
         ckptidxs = sorted(ckptidxs)
         qckptidxs = len(ckptidxs)
 
         mod = int(qckptidxs/maxitems)
-        print(f'|===> walk ckpt models with mod {mod}')
+        print(f'|...> walk ckpt models with mod {mod}')
 
         ckptidxs=[]
         for i,idx in enumerate(range(qckptidxs-1)):
             if i % mod == 1:
                 ckptidxs.append(idx)
-        ckptidxs.append(len(ckptidxs))
-        
 
+        ckptidxs.append(qckptidxs-1)  # append last ckpt
+        print(f"|...> got {len(ckptidxs)} ckpts")
+        
         for ckptidx in ckptidxs:
-            print(f"|===> walk ckptidxs with ckpt: {ckpt}")
+            print(f"|...> walk ckptidxs with ckpt: {ckptidx}")
+            filename = f'predict_ds_{str(imgpathidx).zfill(args.zfill)}_{str(ckptidx).zfill(args.zfill)}.png'        
+            save_image_path = os.path.join(args.results_dir, filename)
+
             model = GAN( 
                 models_dir = args.models_dir,
                 logs_dir = args.logs_dir,
@@ -2250,10 +2053,42 @@ def nncrys(args, kwargs):
                 input_shape = args.input_shape,
                 output_shape = args.input_shape,
             )
+            
+            img = onfile.path_to_rgb_tf(imgpath)
+            img = onformat.rgb_to_nnba(img)
+            img = model.generator(img, training=True)
+            img = onformat.nnba_to_rgb(img)
+            print("|...> test img shape", np.shape(img))
+
+            if args.visual > 1: # high restrained visual
+                onplot.pil_show_rgb(img, "pil_show_rgb")
+            
+            print(f'|...> save {ckptidx} ckpt img to {save_image_path}')
+            onfile.rgb_to_file(img, save_path=save_image_path)
+
             if 0: # img waits
                 onplot.plot_iter_grid(model, test_dataset, 1, 3, figsize = (6.4, 6.3), do=['save']) # do=['plot', 'save']
+    #
+    #
+    #   ckpt models to gif
+    #
+    if 1:    
+        imgpatts = ['predict_ds_*.png']
+        srcdir = args.results_dir
+        dstpath = os.path.join(args.results_dir, 'predict_ds.gif')
+        print(f"|===> togif \n \
+            args.results_dir: {args.results_dir} \n \
+            imgpatts: {imgpatts} \n \
+            dstpath: {dstpath} \n \
+        ")
+        
+        onvid.folder_to_gif(srcdir, dstpath, patts=imgpatts, args=args)      
+    #
+    #
+    #   ckpt models to gif
+    #
+    if 0:
 
-    if 1: # ckpt models to gif
         fromfolder = args.results_dir
         dstpath = os.path.join(args.results_dir, 'out.gif')
         patts= ['frame*']   
@@ -2265,9 +2100,11 @@ def nncrys(args, kwargs):
         ')
 
         onvid.folder_to_gif(fromfolder, dstpath, patts)
-        #_folder_to_gif(fromfolder, dstpath, patts)
-
-    if 0: #  	colab
+    # 
+    #
+    #   colab
+    #
+    if 0:
 
         if onutil.incolab():
             print("|---> load tensorboard to monitor logs with colab")
@@ -2275,13 +2112,29 @@ def nncrys(args, kwargs):
             os.system(f"tensorboard --logdir {args.logs_dir}")
         else:
             print(f"|---> launch a separate tensorboard process to monitor logs with colab")
+    #
+    #
+    #   walk test_dataset
+    #
+    if 0:
 
-    if 0: # walk test_dataset
+        model = GAN( 
+            models_dir = args.models_dir,
+            logs_dir = args.logs_dir,
+            results_dir = args.results_dir,
+            ckptidx = None,  # walk with last ckpt
+            ckpt_dir = args.ckpt_dir,
+            ckpt_prefix = args.ckpt_prefix, # 'ckpt-'
+            input_shape = args.input_shape,
+            output_shape = args.input_shape,
+        )
 
         print(f"|===> walk the test_dataset")
         onplot.plot_iter_grid(model, test_dataset, 3, 3, figsize = (6.4, 6.3), do=['plot', 'save'])
-
-    if 0: # show train first
+    #
+    #
+    #
+    if 1: # show train first
 
         print(f"|===> show first in train dataset")
         for train_input, train_target in train_dataset.take(1):
@@ -2292,8 +2145,11 @@ def nncrys(args, kwargs):
                 onformat.nnba_to_rgb(prediction)
             ]
             onplot.pil_show_rgbs(display_list, scale=1, rows=1)   
-
-    if 0: # show test first
+    #
+    #
+    #   show test first
+    #
+    if 1:
 
         print(f"|===> show first in test dataset")
         for test_input, test_target in test_dataset.take(1):
@@ -2303,9 +2159,12 @@ def nncrys(args, kwargs):
                 onformat.nnba_to_rgb(test_target),
                 onformat.nnba_to_rgb(prediction)
             ]
-            onplot.pil_show_rgbs(display_list, scale=1, rows=1)        
-
-    if 0: # show all in dataset
+            onplot.pil_show_rgbs(display_list, scale=1, rows=1)
+    #
+    #
+    #   show all in dataset
+    #
+    if 0:
 
         print(f"|===> show all in test dataset")
         for inp,tar in test_dataset.as_numpy_iterator():
@@ -2316,8 +2175,11 @@ def nncrys(args, kwargs):
                 onformat.nnba_to_rgb(prediction)
             ]
             onplot.pil_show_rgbs(display_list, scale=1, rows=1)   
-
-    if 0: # train
+    #
+    #
+    #   train
+    #
+    if 0: # args.TRAIN > 0:
 
         print(f"|===> train loop")
 
@@ -2337,7 +2199,7 @@ def nnleonardo(args, kwargs):
     args = onutil.pargs(xp)
     onutil.ddict(vars(args), 'args')
 
-    print(f"|---> nnleonardo: {args.PROJECT}:   \n ")
+    print(f"|===> nnleonardo: {args.PROJECT}:   \n ")
 
     if 1: # tree
 
@@ -2390,7 +2252,9 @@ def nnleonardo(args, kwargs):
         args.verbose:         {args.verbose}, \n \
         args.visual:          {args.visual}, \n \
     ")
-
+    #
+    #
+    #
     if 1: # config
         args.height = args.img_height
         args.width = args.img_width
@@ -2417,13 +2281,13 @@ def nnleonardo(args, kwargs):
         args.patts:     		{args.patts}, \n \
     ")
 
-    if args.visual > 1: # show ref images
+    if args.visual > 0: # show ref images
 
         ref_pict_path = os.path.join(args.dataorg_train_dir, 'da02_re.png')
         ref_draw_path = os.path.join(args.dataorg_train_dir, 'da02_in.png')
 
-        re = onfile.path_to_rgb(ref_pict_path)
-        inp = onfile.path_to_rgb(ref_draw_path)
+        re = onfile.path_to_rgb_tf(ref_pict_path)
+        inp = onfile.path_to_rgb_tf(ref_draw_path)
 
         down_model = ondata.downsample(3, 4)
         down_result = down_model(tf.expand_dims(tf.cast(inp, tf.float32), 0)) # _e_
@@ -2431,7 +2295,7 @@ def nnleonardo(args, kwargs):
         up_model = ondata.upsample(3, 4)
         up_result = up_model(down_result)
 
-        print(f"|---> show ref images:   \n \
+        print(f"|===> show ref images:   \n \
             ref_pict_path: {ref_pict_path} \n \
             ref_draw_path: {ref_draw_path} \n \
             down_result.shape: {down_result.shape} \n \
@@ -2441,12 +2305,12 @@ def nnleonardo(args, kwargs):
             inp shape: {np.shape(inp)} \n \
         ")
 
-        print(f"|---> plot re, inp ...")
+        print(f"|...> plot re, inp ...")
         onplot.pil_show_rgbs([re, inp])
 
     if 1: #  dataorg raw => data train 
 
-        print(f"|---> raw to data")
+        print(f"|===> raw to data")
 
         args.keep_folder=True    
         args.process_type='crop_to_square'
@@ -2471,7 +2335,7 @@ def nnleonardo(args, kwargs):
         if  qinfiles > qoutfiles:
             onset.processFolder(args) # copy inputs to train
         else:
-            print(f'|... no processFolder !!!!. files already there ')
+            print(f'|...> no processFolder !!!!. files already there ')
 
         args.filepatt = f'.*re.{args.file_extension}'
         args.output_folder = args.data_train_B_dir
@@ -2488,7 +2352,7 @@ def nnleonardo(args, kwargs):
         if  qinfiles > qoutfiles:
             onset.processFolder(args) # copy reals to train
         else:
-            print(f'|... no processFolder !!!!. files already there ')
+            print(f'|...> no processFolder !!!!. files already there ')
 
     if 1: #  dataorg_test_dir raw => data_test_dir (A/B) data
         args.keep_folder=True    
@@ -2512,7 +2376,7 @@ def nnleonardo(args, kwargs):
         if not qinfiles == qoutfiles:
             onset.processFolder(args) # copy inputs to test
         else:
-            print(f'|... no processFolder !!!!. files there ')
+            print(f'|...> no processFolder !!!!. files there ')
 
         args.filepatt = f'.*re.{args.file_extension}'
         args.output_folder = args.data_test_B_dir
@@ -2528,7 +2392,7 @@ def nnleonardo(args, kwargs):
         if not qinfiles == qoutfiles:
             onset.processFolder(args) # copy reals to test
         else:
-            print(f'|... no processFolder !!!!. files there ')
+            print(f'|...> no processFolder !!!!. files there ')
 
     if 1: #  data to dataset (A/B) data
         print(f"|---> data to dataset")
@@ -2556,7 +2420,7 @@ def nnleonardo(args, kwargs):
         if not qinfiles == qoutfiles:
             onset.processFolder(args) # copy inputs to train
         else:
-            print(f'|... no processFolder !!!!. files there ')
+            print(f'|...> no processFolder !!!!. files there ')
 
         args.input_folder = args.data_train_B_dir
         args.filepatt = f'.*.{args.file_extension}'
@@ -2573,7 +2437,7 @@ def nnleonardo(args, kwargs):
         if not qinfiles == qoutfiles:
             onset.processFolder(args) # copy reals to train
         else:
-            print(f'|... no processFolder !!!!. files there ')
+            print(f'|...> no processFolder !!!!. files there ')
 
         # data_test_dir raw => dataset
 
@@ -2592,7 +2456,7 @@ def nnleonardo(args, kwargs):
         if not qinfiles == qoutfiles:
             onset.processFolder(args) # copy inputs to test
         else:
-            print(f'|... no processFolder !!!!. files there ')
+            print(f'|...> no processFolder !!!!. files there ')
 
         args.input_folder = args.data_test_B_dir
         args.filepatt = f'.*re.{args.file_extension}'
@@ -2609,7 +2473,7 @@ def nnleonardo(args, kwargs):
         if not qinfiles == qoutfiles:
             onset.processFolder(args) # copy reals to test
         else:
-            print(f'|... no processFolder !!!!. files there ')
+            print(f'|...> no processFolder !!!!. files there ')
 
     if 1: #  data_train_dir => tf datasets
 
@@ -2650,11 +2514,12 @@ def nnleonardo(args, kwargs):
     if 1: # model
         print("|===> model")
 
-        gan = GAN(
+        model = GAN(
             models_dir = args.models_dir,
             logs_dir = args.logs_dir,
             ckpt_dir = args.ckpt_dir,
             ckpt_prefix = args.ckpt_prefix,
+            ckptidx = None, # -1, None, n            
             input_shape = args.input_shape,
             output_shape = args.input_shape,
         )
@@ -2677,21 +2542,21 @@ def nnleonardo(args, kwargs):
 
         imgs = paths_to_pair([path1, path2], args.img_height, args.img_width)
 
-        print("|... path1", type(path1), np.shape(path1))
-        print("|... path2", type(path2), np.shape(path2))
+        print("|...> path1", type(path1), np.shape(path1))
+        print("|...> path2", type(path2), np.shape(path2))
 
         img1 = tf.cast(imgs[0], tf.float32)[tf.newaxis,...]
         img2 = tf.cast(imgs[1], tf.float32)[tf.newaxis,...]
 
-        prediction = gan.generator(img1, training=True) # _e_
-        print("|... prediction", type(prediction), np.shape(prediction))
+        prediction = model.generator(img1, training=True) # _e_
+        print("|...> prediction", type(prediction), np.shape(prediction))
 
         img1 = onformat.nnba_to_rgb(img1)
         img2 = onformat.nnba_to_rgb(img2)
         img3 = onformat.nnba_to_rgb(prediction)
 
         display_list = [ img1, img2, img3 ]
-        print("|... pil show rgbs")
+        print("|...> pil show rgbs")
         onplot.pil_show_rgbs(display_list, scale=1, rows=1)     
 
     if args.visual:  # demo dataset
@@ -2700,7 +2565,7 @@ def nnleonardo(args, kwargs):
         for train_input, train_target in train_dataset.take(1):
                 
             print("|--->.. train_input", type(train_input), np.shape(train_input))
-            prediction = gan.generator(train_input, training=True) # _e_
+            prediction = model.generator(train_input, training=True) # _e_
             print("|--->.. prediction", type(prediction), np.shape(prediction))
 
             img1 = onformat.nnba_to_rgb(train_input)
@@ -2713,7 +2578,7 @@ def nnleonardo(args, kwargs):
         if test_dataset:
             print("|---> probe test dataset prediction")
             for test_input, test_target in test_dataset.take(1):
-                prediction = gan.generator(test_input, training=True) # _e_
+                prediction = model.generator(test_input, training=True) # _e_
 
                 img1 = onformat.nnba_to_rgb(test_input)
                 img2 = onformat.nnba_to_rgb(test_target) 
@@ -2722,10 +2587,10 @@ def nnleonardo(args, kwargs):
             display_list = [ img1, img2,  img3 ]
             onplot.pil_show_rgbs(display_list, scale=1, rows=1)        
     
-    if 1: # train
+    if args.TRAIN > 0: # train
 
         print("|===> training loop")
-        gan.fit(train_dataset, test_dataset, args)     # , summary_writer
+        model.fit(train_dataset, test_dataset, args)     # , summary_writer
 
     print(f'|===> end nnleonardo')
 #
@@ -2741,7 +2606,7 @@ def nnfacades(args, kwargs):
     args = onutil.pargs(xp)
     onutil.ddict(vars(args), 'args')
 
-    print(f"|---> nnfacades: {args.PROJECT}:  \n ")
+    print(f"|===> nnfacades: {args.PROJECT}:  \n ")
 
     if 1: # tree
         args.ckpt_dir = args.models_dir
@@ -2823,11 +2688,12 @@ def nnfacades(args, kwargs):
 
     if 1: # model
         print(f"|===> model")
-        gan = GAN(
+        model = GAN(
             models_dir = args.models_dir,
             logs_dir = args.logs_dir,
             ckpt_dir = args.ckpt_dir,
             ckpt_prefix = args.ckpt_prefix,
+            ckptidx = None, # -1, None, n
             input_shape = args.input_shape,
             output_shape = args.input_shape,
         )
@@ -2845,10 +2711,10 @@ def nnfacades(args, kwargs):
         print(f"|---> show dataset train")
         for train_input, train_target in train_dataset.take(1):
 
-            prediction = gan.generator(train_input, training=True) # _e_
-            print("|... train_input", type(train_input), np.shape(train_input))
-            print("|... train_target", type(train_target), np.shape(train_target))
-            print("|... prediction", type(prediction), np.shape(prediction))
+            prediction = model.generator(train_input, training=True) # _e_
+            print("|...> train_input", type(train_input), np.shape(train_input))
+            print("|...> train_target", type(train_target), np.shape(train_target))
+            print("|...> prediction", type(prediction), np.shape(prediction))
             
             img1 = onformat.nnba_to_rgb(train_input)
             img2 = onformat.nnba_to_rgb(train_target) 
@@ -2861,7 +2727,7 @@ def nnfacades(args, kwargs):
         print(f"|---> show dataset test")
         for test_input, test_target in test_dataset.take(1):
 
-            prediction = gan.generator(test_input, training=True) # _e_
+            prediction = model.generator(test_input, training=True) # _e_
             
             img1 = onformat.nnba_to_rgb(test_input)
             img2 = onformat.nnba_to_rgb(test_target) 
@@ -2870,10 +2736,10 @@ def nnfacades(args, kwargs):
             display_list = [img1, img2, img3]
             onplot.pil_show_rgbs(display_list, scale=1, rows=1)        
 
-    if 1: # train
+    if args.TRAIN > 0: # train
 
         print(f"|===> training loop")
-        gan.fit(train_dataset, test_dataset, args)     # , summary_writer
+        model.fit(train_dataset, test_dataset, args)     # , summary_writer
 
     print(f'|===> end nnfacades')
 #
@@ -2888,9 +2754,11 @@ def nngoya(args, kwargs):
     xp = getxp(vars(args))
     args = onutil.pargs(xp)
     onutil.ddict(vars(args), 'args')
-
-    print(f"|---> nngoya: {args.PROJECT}:  \n ")
-
+    #
+    print(f"|===> nngoya: {args.PROJECT}:  \n ")
+    #
+    #
+    #
     if 1: # data params
         args.src_pattern = '*.jpg'  # superseed pat
         height = args.img_height
@@ -2899,7 +2767,9 @@ def nngoya(args, kwargs):
         batch_size = args.batch_size
         input_channels = args.input_channels
         input_shape = [height, width, input_channels]
-
+    #
+    #
+    #
     if 1: # tree
         ckpt_dir = os.path.join(args.proto_dir, 'leonardo', 'Models')
 
@@ -2910,51 +2780,95 @@ def nngoya(args, kwargs):
     if args.verbose: print(f"|---> nngoya tree:   \n \
         args.data_dir: {args.data_dir} \n \
         ckpt_dir: {ckpt_dir} \n \
-        ckpt_prefix: {ckpt_prefix} \n \
         logs_dir: {args.logs_dir} \n \
     ")
+    #
+    #
+    #
+    if 1: # config
+        # 
+        # defining args here they cannot be set in command line tbr
+        #
+        args.input_shape = [args.height, args.width, args.input_channels]
 
-    if args.verbose: print(f"|---> nngoya config:   \n \
+    if args.verbose: print(f'|---> nngoya config:   \n \
         cwd: {os.getcwd()} \n \
-        PROJECT: {args.PROJECT} \n \
-        height: {height} \n \
-        width: {width} \n \
-        input_channels: {input_channels} \n \
-        buffer_size: {buffer_size} \n \
-        batch_size: {batch_size} \n \
-        input_shape: {input_shape} \n \
-    ")
-
+        args.PROJECT: {args.PROJECT} \n \
+        args.height: {args.height} \n \
+        args.width: {args.width} \n \
+        args.input_channels: {args.input_channels} \n \
+        args.buffer_size: {args.buffer_size} \n \
+        args.batch_size: {args.batch_size} \n \
+        args.input_shape: {args.input_shape} \n \
+        args.ckpt_prefix: {args.ckpt_prefix} \n \
+    ')        
+    #
+    #
+    #
     if 1: # model
-        gan = GAN(
+        model = GAN(
             models_dir = args.models_dir,
             logs_dir = args.logs_dir,
-            ckpt_dir = ckpt_dir,
-            ckpt_prefix = ckpt_prefix,
-            input_shape = input_shape,
-            output_shape = input_shape,
+            ckpt_dir = args.ckpt_dir,
+            ckptidx = None,
+            ckpt_prefix = args.ckpt_prefix,
+            input_shape = args.input_shape,
+            output_shape = args.input_shape,
         )
-
+    #
+    #
+    #
     if 1: # try generator
         img1 = os.path.join(args.gdata, 'leonardo', 'train', 'da02_in.png')
         img1 = os.path.join(args.gdata, 'leonardo', 'test', 'da13_in.png')			
         img1 = os.path.join(args.gdata, 'Goya__Guerra', 'img0006.jpg')
 
-        img1 = onfile.path_to_rgb(img1)
+        img1 = onfile.path_to_rgb_tf(img1)
         img1 = img_jitter_random(img1, height, width)        
         img1 = onformat.rgb_to_nba(img1)
         img1 = tf.cast(img1, tf.float32)[tf.newaxis,...]
 
-        prediction = gan.generator(img1, training=True) # _e_
-        print(f"|---> prediction", type(prediction), np.shape(prediction))
+        prediction = model.generator(img1, training=True) # _e_
+        print(f'|===> prediction', type(prediction), np.shape(prediction))
 
         display_list = [
             onformat.nnba_to_rgb(img1),
             onformat.nnba_to_rgb(prediction)
         ]
         onplot.pil_show_rgbs(display_list, scale=1, rows=1)  
+    #
+    #
+    #
+    print(f'|===> end nngoya')
+#
+#
+#   nninfo
+#   
+def nninfo(args, kwargs):
 
-    print(f'|---> end nngoya')
+    args = onutil.pargs(vars(args))
+    onutil.ddict(vars(args), 'args')
+
+    print(f"|---> pix2pix:  \n \
+    nndanboo: implement https://github.com/lllyasviel/DanbooRegion \n \
+    nncrys: train quimica_tech dataset\n \
+    nnfacades: train facades dataset {args.dataorg_dir} \n \
+    nnleonardo: train leonardo dataset {args.dataorg_dir} \n \
+    nninfo: show commands \n \
+    tree, data,  \n \
+    ref: https://github.com/NVIDIA/pix2pixHD \n \
+    ref: https://www.tensorflow.org/tutorials/generative/pix2pix \n \
+    \n \
+    citations:\n \
+        InProceedings=DanbooRegion2020,\n \
+        author=Lvmin Zhang, Yi JI, and Chunping Liu, \n \
+        booktitle=European Conference on Computer Vision (ECCV), \n \
+        title=DanbooRegion: An Illustration Region Dataset, \n \
+        year=2020, \n \
+    \n \
+    tbc: \n \
+        https://github.com/ProGamerGov/neural-style-pt \n \
+    ")
 #
 #
 #

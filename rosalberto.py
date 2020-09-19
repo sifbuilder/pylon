@@ -98,7 +98,7 @@ if 1: # get base.py from github
         print(f"|===> base in cwd {cwd}")
 #
 #
-#   FUNS
+#   LIBS
 #
 #
 # check if base.Onpyon is defined
@@ -129,7 +129,7 @@ onmoono = Onmoono()
 #
 def getap():
     cp = {
-        "primecmd": 'nntrain',    
+        "primecmd": 'nnspace',    
                 
         "MNAME": "rosasalberto",      
         "AUTHOR": "rosasalberto",      
@@ -421,7 +421,7 @@ discriminator_weights = {
 #
 class BlockLayer(tf.keras.layers.Layer):
     """
-    StyleGan2 discriminator Block layer
+    discriminator Block layer
     """
     def __init__(self, res, impl='cuda', gpu=False, **kwargs):
         
@@ -472,7 +472,7 @@ class BlockLayer(tf.keras.layers.Layer):
 #
 class Conv2DLayer(tf.keras.layers.Layer):
     """
-    StyleGan2 discriminator convolutional layer
+    discriminator convolutional layer
     """
     def __init__(self, fmaps, kernel, up=False, down=False, 
                                demodulate=True, resample_kernel=None, gain=1, use_wscale=True, lrmul=1, 
@@ -534,7 +534,7 @@ class Conv2DLayer(tf.keras.layers.Layer):
 #
 class DenseLayer(tf.keras.layers.Layer):
     """
-    StyleGan2 Dense layer, including weights multiplication per runtime coef, and bias multiplication per lrmul
+    Dense layer, including weights multiplication per runtime coef, and bias multiplication per lrmul
     """
     def __init__(self, fmaps, lrmul=1, **kwargs):
         
@@ -565,7 +565,7 @@ class DenseLayer(tf.keras.layers.Layer):
 #
 class FromRgbLayer(tf.keras.layers.Layer):
     """
-    StyleGan2 discriminator From RGB layer
+    discriminator From RGB layer
     """
     def __init__(self, fmaps, impl='cuda', gpu=True, **kwargs):
         
@@ -597,7 +597,7 @@ class FromRgbLayer(tf.keras.layers.Layer):
 #
 class MinibatchStdLayer(tf.keras.layers.Layer):
     """
-    StyleGan2 discriminator MinibatchStdLayer
+    discriminator MinibatchStdLayer
     """
     def __init__(self, group_size=4, num_new_features=1, **kwargs):
         
@@ -627,7 +627,7 @@ class MinibatchStdLayer(tf.keras.layers.Layer):
 #
 class ModulatedConv2DLayer(tf.keras.layers.Layer):
     """
-    StyleGan2 generator modulated convolution layer
+    generator modulated convolution layer
     """
     def __init__(self, fmaps, kernel, up=False, down=False, 
                                demodulate=True, resample_kernel=None, gain=1, use_wscale=True, lrmul=1, 
@@ -724,7 +724,7 @@ class ModulatedConv2DLayer(tf.keras.layers.Layer):
 #
 class SynthesisMainLayer(tf.keras.layers.Layer):
     """
-    StyleGan2 synthesis network main layer
+    synthesis network main layer
     """
     def __init__(self, fmaps, up=False, impl='cuda', gpu=True,**kwargs):
         
@@ -773,7 +773,7 @@ class SynthesisMainLayer(tf.keras.layers.Layer):
 #
 class ToRgbLayer(tf.keras.layers.Layer):
     """
-    StyleGan2 generator To RGB layer
+    generator To RGB layer
     """
     def __init__(self, impl='cuda', gpu=True,**kwargs):
         
@@ -802,7 +802,7 @@ class ToRgbLayer(tf.keras.layers.Layer):
 #
 class StyleGan2Discriminator(tf.keras.layers.Layer):
     """
-    StyleGan2 discriminator config f for tensorflow 2.x 
+    discriminator config f for tensorflow 2.x 
     """
     def __init__(self, resolution=1024, weights=None, impl='cuda', gpu=True, **kwargs):
         """
@@ -856,7 +856,7 @@ class StyleGan2Discriminator(tf.keras.layers.Layer):
         self.dense_4_4 = DenseLayer(fmaps=512, name='4x4/Dense0')
         self.dense_output = DenseLayer(fmaps=1, name='Output')
     
-    def _call(self, y):
+    def call(self, y):
         """
         Parameters
         ----------
@@ -865,35 +865,6 @@ class StyleGan2Discriminator(tf.keras.layers.Layer):
         -------
         output of the discriminator. 
         """
-        y = tf.cast(y, 'float32')
-        x = None
-        
-        for res in range(self.resolution_log2, 2, -1):
-            if  res == self.resolution_log2:
-                x = self.from_rgb(x, y)
-            x = getattr(self, 'block_{}_{}'.format(2**res, 2**res))(x)
-
-        # minibatch std dev
-        x = self.mini_btch_std_layer(x)
-        
-        # last convolution layer
-        x = self.conv_4_4(x)
-        x += tf.reshape(self.conv_4_4_bias, [-1 if i == 1 else 1 for i in range(x.shape.rank)])
-        x = tf.math.multiply(tf.nn.leaky_relu(x, 0.2), tf.math.sqrt(2.))
-        
-        x = tf.reshape(x, [-1, np.prod([d for d in x.shape[1:]])])
-        # dense layer
-        x = self.dense_4_4(x)
-        x = tf.math.multiply(tf.nn.leaky_relu(x, 0.2), tf.math.sqrt(2.))
-        # output layer
-        x = self.dense_output(x)
-        
-        return tf.identity(x, name='scores_out')
-    
-    def call(self, inputs, training=False):
-
-        y, labels = inputs
-
         y = tf.cast(y, 'float32')
         x = None
         
@@ -918,6 +889,11 @@ class StyleGan2Discriminator(tf.keras.layers.Layer):
         x = self.dense_output(x)
         
         return tf.identity(x, name='scores_out')
+    
+    def dcall(self, inputs, training=False):
+
+        y, labels = inputs
+        return self(y)
     
     def __adjust_resolution(self, weights_name):
         """
@@ -955,7 +931,7 @@ class StyleGan2Discriminator(tf.keras.layers.Layer):
 #
 class MappingNetwork(tf.keras.layers.Layer):
     """
-    StyleGan2 generator mapping network, from z to dlatents for tensorflow 2.x
+    generator mapping network, from z to dlatents for tensorflow 2.x
     """
     def __init__(self, **kwargs):
         
@@ -976,7 +952,9 @@ class MappingNetwork(tf.keras.layers.Layer):
             
     def call(self, z):
         
+        print(f'|---> MappingNetwork precast z:  {type(z)} {np.shape(z)}')
         z = tf.cast(z, 'float32')
+        print(f'|---> MappingNetwork postcast z:  {type(z)} {np.shape(z)}')
         
         # Normalize inputs
         scale = tf.math.rsqrt(tf.reduce_mean(tf.square(z), axis=1, keepdims=True) + 1e-8)
@@ -995,7 +973,7 @@ class MappingNetwork(tf.keras.layers.Layer):
 #
 class SynthesisNetwork(tf.keras.layers.Layer):
     """
-    StyleGan2 generator synthesis network from dlatents to img tensor for tensorflow 2.x
+    generator synthesis network from dlatents to img tensor for tensorflow 2.x
     """
     def __init__(self, resolution=1024, impl='cuda', gpu=True, **kwargs):
         """
@@ -1064,7 +1042,7 @@ class SynthesisNetwork(tf.keras.layers.Layer):
 # from utils.weights_map import available_weights, synthesis_weights, mapping_weights, weights_stylegan2_dir
 class StyleGan2Generator(tf.keras.layers.Layer):
     """
-    StyleGan2 generator config f for tensorflow 2.x
+    generator config f for tensorflow 2.x
     """
     def __init__(self, resolution=1024, weights=None, impl='cuda', gpu=True, **kwargs):
         """
@@ -1086,19 +1064,29 @@ class StyleGan2Generator(tf.keras.layers.Layer):
         super(StyleGan2Generator, self).__init__(**kwargs)
         
         self.resolution = resolution
+        print(f'|...> StyleGan2Generator resolution {resolution}')
+
         if weights is not None: self.__adjust_resolution(weights)
 
+        print(f'|...> StyleGan2Generator MappingNetwork')
         self.mapping_network = MappingNetwork(name='Mapping_network')
+
+        print(f'|...> StyleGan2Generator SynthesisNetwork')
         self.synthesis_network = SynthesisNetwork(resolution=self.resolution, impl=impl, 
                                                   gpu=gpu, name='Synthesis_network')
         
         # load weights
         if weights is not None:
+            print(f'|...> StyleGan2Generator weights call with noise')
             #we run the network to define it, not the most efficient thing to do...
-            _ = self([tf.zeros(shape=(1, 512)), None])
+            #_ = self([tf.zeros(shape=(1, 512)), None]) # _e_ labels
+            _ = self(tf.zeros(shape=(1, 512)))
+            print(f'|...> StyleGan2Generator load weights')
             self.__load_weights(weights)
+
+        print(f'|...> StyleGan2Generator inited')
         
-    def _call(self, z):
+    def call(self, z):
         """
         Parameters
         ----------
@@ -1114,7 +1102,7 @@ class StyleGan2Generator(tf.keras.layers.Layer):
     
     # _e_
     # add 
-    def call(self, inputs, truncation_cutoff=None, truncation_psi=1.0, training=None, mask=None):
+    def dcall(self, inputs, truncation_cutoff=None, truncation_psi=1.0, training=None, mask=None):
 
         # weights_name = 'ffhq'
         # w_average = np.load(f'weights/{weights_name}_dlatent_avg.npy')
@@ -1123,8 +1111,7 @@ class StyleGan2Generator(tf.keras.layers.Layer):
 
         dlatents, labels = inputs
 
-        dlatents = self.mapping_network(dlatents) # z
-        img = self.synthesis_network(dlatents)
+        return self(dlatents)
 
         # if training:
         #     self.update_moving_average_of_w(w_broadcasted)
@@ -1262,16 +1249,11 @@ class StyleGan2(tf.keras.Model):
         self.verbose = verbose
 
         self.mixed_prob = 0.9
-    
         self.im_size = im_size
-        print("StyleGan:im_size: %d " %self.im_size)    
-
         self.n_layers = int(log2(im_size) - 1)
-        print("StyleGan:n_layers: %d " %self.n_layers)
 
         self.steps = steps
         self.qsteps = qsteps                                # to train steps
-        print("StyleGan:qsteps: will train up to %d steps" %self.qsteps)
 
         t_params = training_parameters
 
@@ -1301,14 +1283,18 @@ class StyleGan2(tf.keras.Model):
 
         if weights is not None:
             self.__adjust_resolution(weights)
-        print(f'resolution: {self.resolution}')            
+        
+        print(f'|...> StyleGan2: \n \
+            self.im_size {self.im_size} \n \
+            self.n_layers {self.n_layers} \n \
+            self.resolution {self.resolution} \n \
+            will train up to self.qsteps {self.qsteps} \n \
+        ')
 
-        print('Create models')            
         self.G = StyleGan2Generator(resolution=self.resolution, weights=weights, 
                         impl=impl, gpu=gpu, name='Generator')
         self.D = StyleGan2Discriminator(resolution=self.resolution, weights=weights, 
                         impl=impl, gpu=gpu, name='Discriminator')
-        
 
         learning_rate = 0.01
         beta1 = 0.99
@@ -1330,31 +1316,32 @@ class StyleGan2(tf.keras.Model):
         self.S = SynthesisNetwork(resolution=self.resolution, impl=impl, 
                                         gpu=gpu, name='Synthesis_network')
 
-        self.ckpt_dir = ckpt_dir
-        self.ckpt_prefix = ckpt_prefix
-        self.ckpt = tf.train.Checkpoint(
-            GMO=self.GMO,
-            DMO=self.DMO,
-            G=self.G,
-            D=self.D,
-             g_clone=self.g_clone)
+        if weights is None:
+            self.ckpt_dir = ckpt_dir
+            self.ckpt_prefix = ckpt_prefix
+            self.ckpt = tf.train.Checkpoint(
+                GMO=self.GMO,
+                DMO=self.DMO,
+                G=self.G,
+                D=self.D,
+                g_clone=self.g_clone)
 
-        self.manager = tf.train.CheckpointManager(self.ckpt, self.ckpt_dir, max_to_keep=2)
+            self.manager = tf.train.CheckpointManager(self.ckpt, self.ckpt_dir, max_to_keep=2)
 
-        self.restore_checkpoint()
-        if self.manager.latest_checkpoint:
-            print('Restored from {}'.format(self.manager.latest_checkpoint))
+            self.restore_checkpoint()
+            if self.manager.latest_checkpoint:
+                print(f'|...> Restored from {self.manager.latest_checkpoint}')
 
-            # check if already trained in this resolution
-            restored_step = self.g_optimizer.iterations.numpy()
-            if restored_step >= self.max_steps:
-                print('Already reached max steps {}/{}'.format(restored_step, self.max_steps))
-                self.reached_max_steps = True
-                return
-        else:
-            print('Not restoring from saved checkpoint')
+                ## check if already trained in this resolution
+                #restored_step = self.g_optimizer.iterations.numpy()
+                #if restored_step >= self.max_steps:
+                #    print('Already reached max steps {}/{}'.format(restored_step, self.max_steps))
+                #    self.reached_max_steps = True
+                #    return
+            else:
+                print('|...> Not restoring from saved checkpoint')
 
-        print("|... StyleGan2 inited")
+        print("|...> StyleGan2 inited")
 
     def call(self, latent_vector):
         """
@@ -1365,8 +1352,8 @@ class StyleGan2(tf.keras.Model):
         -------
         score : output of the discriminator. 
         """
-        img = self.G([latent_vector, None]) # _e_
-        score = self.D([img, None])
+        img = self.G(latent_vector) # _e_
+        score = self.D(img)
 
         return score    
 
@@ -1422,9 +1409,9 @@ class StyleGan2(tf.keras.Model):
             real_images = onmoono.preprocess_fit_train_image(real_images, self.out_res)
             labels = tf.ones((tf.shape(real_images)[0], self.g_params['labels_dim']), dtype=tf.dtypes.float32)
 
-            fake_images = self.G([z, labels], training=True)
-            real_scores = self.D([real_images, labels], training=True)
-            fake_scores = self.D([fake_images, labels], training=True)
+            fake_images = self.G(z, training=True)
+            real_scores = self.D(real_images, training=True)
+            fake_scores = self.D(fake_images, training=True)
             
             divergence = tf.math.softplus(fake_scores)  # log ( 1 + exp( D(fakes) ) ) # alt tf.math.relu
             divergence += tf.math.softplus(-real_scores) # log ( 1 - exp( D(reals) ) )  # alt tf.math.relu
@@ -1442,7 +1429,9 @@ class StyleGan2(tf.keras.Model):
 
         return d_loss, g_loss
 
-    def fit(self):
+    def fit(self, args):
+
+        n_iterations = args.n_iterations # 100
 
         print(f"|===> fit \n \
                 self.steps: {self.steps} \n \
@@ -1452,9 +1441,9 @@ class StyleGan2(tf.keras.Model):
                 self.shuffle_buffer_size: {self.shuffle_buffer_size} \n \
                 self.batch_size: {self.batch_size} \n \
                 self.g_params: {self.g_params} \n \
+                self.ckpt_prefix: {self.ckpt_prefix} \n \
+                n_iterations (ckpt each): {n_iterations} \n \
             \n ")
-
-        n_iterations = 100
 
         # if self.reached_max_steps:
         #     return
@@ -1500,12 +1489,10 @@ class StyleGan2(tf.keras.Model):
             # 	save checkpoint
             
             if (step + 1) % n_iterations == 0:
-                print(f'|... saving (checkpoint) the model every \
-                    {n_iterations} steps to {self.ckpt_prefix}')
                 self.ckpt.save(file_prefix = self.ckpt_prefix)
                 #self.manager.save(checkpoint_number=step)				
 
-                print ('Time taken for step {} is {} sec\n'.format(step + 1, time.time()-t_start))
+                #print ('Time taken for step {} is {} sec\n'.format(step + 1, time.time()-t_start))
 
         self.ckpt.save(file_prefix = self.ckpt_prefix)
         # self.manager.save(checkpoint_number=step)
@@ -1531,24 +1518,101 @@ class StyleGan2(tf.keras.Model):
             print(f'|...> model.restore_checkpoint checkpoint not found')
 #
 #
+#   FUNS
+#
+#
+#
+# https://github.com/rosasalberto/StyleGAN2-TensorFlow-2.x/blob/master/utils/utils_stylegan2.py
+def convert_images_to_uint8(images, drange=[-1, 1], nchw_to_nhwc=False, shrink=1, uint8_cast=True):
+    """Convert a minibatch of images from float32 to uint8 with configurable dynamic range.
+    Can be used as an output transformation for Network.run().
+    """
+    images = tf.cast(images, tf.float32)
+    if shrink > 1:
+        ksize = [1, 1, shrink, shrink]
+        images = tf.nn.avg_pool(images, ksize=ksize, strides=ksize, 
+                                padding="VALID", data_format="NCHW")
+    if nchw_to_nhwc:
+        images = tf.transpose(images, [0, 2, 3, 1])
+    scale = 255 / (drange[1] - drange[0])
+    images = images * scale + (0.5 - drange[0] * scale)
+    if uint8_cast:
+        images = tf.saturate_cast(images, tf.uint8)
+    return images
+#    
+#https://colab.research.google.com/github/rosasalberto/StyleGAN2-TensorFlow-2.x/blob/master/example_how_to_use.ipynb#scrollTo=m4jm93W2jlJa
+def generate_and_plot_images(gen, seed, w_avg, truncation_psi=1):
+    """ plot images from generator output """
+    
+    fig, ax = plt.subplots(1,3,figsize=(15,15))
+    for i in range(3):
+    
+        # creating random latent vector
+        rnd = np.random.RandomState(seed)
+        z = rnd.randn(1, 512).astype('float32')
+
+        # running mapping network
+        dlatents = gen.mapping_network(z)
+        # adjusting dlatents depending on truncation psi, if truncatio_psi = 1, no adjust
+        dlatents = w_avg + (dlatents - w_avg) * truncation_psi 
+        # running synthesis network
+        out = gen.synthesis_network(dlatents)
+
+        #converting image/s to uint8
+        img = convert_images_to_uint8(out, nchw_to_nhwc=True, uint8_cast=True)
+
+        #plotting images
+        ax[i].axis('off')
+        img_plot = ax[i].imshow(img.numpy()[0])
+        
+        seed += 1
+    
+    plt.show()
+#
+def generate_and_save_images(images, it, folder, plot_fig=True):
+    plt.close() 
+    fig = plt.figure(figsize=(9,9))
+
+    for i in range(images.shape[0]):
+        plt.subplot(2, 2, i+1)
+        plt.imshow(images[i])
+        plt.axis('off')
+
+    # tight_layout minimizes the overlap between 2 sub-plots
+    fig.tight_layout()
+    plt.savefig(os.path.join(folder, 'image_at_iter_{:04d}.png'.format(it)))
+    if plot_fig: plt.show()
+#
+#
 #   CMDS
 #
 #
 #
 #
-#   nntrain
+#   nnspace
 #
-def nntrain(args, kwargs):
-    # ERROR TF COMPILE
+def nnspace(args, kwargs):
     
     args = onutil.pargs(vars(args))
-    args.PROJECT = 'rosalberto'
-    args.DATASET = 'spaceone'
+
+    if 0:
+        print(f"|===> nnspace chose projeect and data")
+    elif 1:        
+        args.PROJECT = 'spaceone'
+        args.DATASET = 'spaceone'
+        args.qslices = 10
+        args.eps = 0.9
+    elif 0:
+        args.PROJECT = 'space'
+        args.DATASET = 'space'
+        args.qslices = 1
+        args.eps = 1.0
+
     xp = getxp(vars(args))
     args = onutil.pargs(xp)
     onutil.ddict(vars(args), 'args')
 
-    print(f"|===> nntrain:  \n \
+    print(f"|===> nnspace:  \n \
         cwd: {os.getcwd()} \n \
         AUTHOR: {args.AUTHOR} \n \
         PROJECT: {args.PROJECT} \n \
@@ -1558,8 +1622,6 @@ def nntrain(args, kwargs):
 
     if 1: # config
         args.clip = (256, 256)
-        args.qslices = 10
-        args.eps = 0.9
         args.impl = 'cuda' # 'ref' if cuda is not available in your machine
         args.gpu = True # False if tensorflow cpu is used   		
         args.weights_name = 'ffhq' # face model trained by Nvidia
@@ -1571,6 +1633,7 @@ def nntrain(args, kwargs):
         args.batch_size = 4 # 12, # 16
         args.mixed_prob = 0.9
         args.qsteps = 1001 # 1000001,   #   up to step
+        args.n_iterations = 100 #  save checkpoint each n_iterations
 
     print(f'|===> nndata config:  \n \
         args.clip: {args.clip} \n \
@@ -1587,6 +1650,7 @@ def nntrain(args, kwargs):
         args.batch_size: {args.batch_size}\n \
         args.mixed_prob: {args.mixed_prob}\n \
         args.qsteps: {args.qsteps}\n \
+        args.n_iterations: {args.n_iterations}\n \
     ')
 
     if 1: # tree
@@ -1598,7 +1662,7 @@ def nntrain(args, kwargs):
         # args.tfrecord_dir = os.path.join(args.gdata, 'ffhq')
         # args.tfrecord_dir = args.dataset_dir
 
-        args.results_dir = os.path.join(args.proto_dir, 'results')
+        args.results_dir = os.path.join(args.proj_dir, 'Results')
 
         args.ckpt_dir = args.ckpt_dir
         args.ckpt_prefix = os.path.join(args.ckpt_dir, "ckpt")
@@ -1610,12 +1674,12 @@ def nntrain(args, kwargs):
         os.makedirs(args.results_dir, exist_ok=True)     
         os.makedirs(args.ckpt_dir, exist_ok=True)     
 
-        weights_dir = os.path.join(args.proj_dir, 'weights')
-        weights_path = os.path.join(weights_dir, args.weights_name + '.npy')
+        args.weights_dir = os.path.join(args.proj_dir, 'weights')
+        args.weights_path = os.path.join(args.weights_dir, args.weights_name + '.npy')
 
-        os.makedirs(weights_dir, exist_ok=True)
+        os.makedirs(args.weights_dir, exist_ok=True)
 
-    print(f'|===> nntrain tree:  \n \
+    print(f'|===> tree:  \n \
         cwd: {os.getcwd()} \n \
         args.proj_dir: {args.proj_dir} \n \
         args.model_base_dir: {args.model_base_dir} \n \
@@ -1626,19 +1690,28 @@ def nntrain(args, kwargs):
         args.dataorg_dir: {args.dataorg_dir} \n \
         args.data_dir: {args.data_dir} \n \
         args.dataset_dir: {args.dataset_dir} \n \
+        args.weights_dir: {args.weights_dir} \n \
+        args.weights_path: {args.weights_path} \n \
     ')
 
     if 1: # git
 
         onutil.get_git(args.AUTHOR, args.GITPOD, args.proj_dir)
 
+        os.chdir(args.proj_dir) # %cd $proj_dir
+        cwd = os.getcwd()
+        print(f'|===> git:  \n \
+            cwd: {os.getcwd()} \n \
+        ')
+
+
     if 1: # org => data (formdata)
 
-        print(f'|====> nndata formed images \n \
+        print(f'|====> org to formed data images \n \
             from {args.dataorg_dir} into {args.data_dir} \n \
             args.clip: {args.clip} \n \
-            qslices: {args.qslices} \n \
-            eps: {args.eps} \n \
+            args.qslices: {args.qslices} \n \
+            args.eps: {args.eps} \n \
         ')
 
         qinfiles = onfile.qfiles(args.dataorg_dir, ['*.jpg', '*.png'])
@@ -1646,36 +1719,48 @@ def nntrain(args, kwargs):
         qoutfiles = onfile.qfiles(args.data_dir, ['*.jpg', '*.png'])
         if qinslices > qoutfiles:
 
-            if onutil.isempty(args.data_dir):
-                print(f"args.data_dir {args.data_dir} not empty !!!")
+            if not onutil.isempty(args.data_dir):
+                print(f"|...> args.data_dir {args.data_dir} not empty !!!")
 
             imgs = ondata.folder_to_formed_pils(args.dataorg_dir, 
                 clip = args.clip, qslices = args.qslices, eps = args.eps)
+
+            print(f'|...> org to data files !!! \n \
+                 qinfiles: {qinfiles} \n \
+                 qinslices: {qinslices} \n \
+                 qoutfiles: {qoutfiles} \n \
+                 imgs p: {len(imgs)} \n \
+                 args.data_dir: {args.data_dir} \n \
+                ')
+
             onfile.pils_to_folder(imgs, args.data_dir)
 
         else:
 
-            print(f'|... no org to data files')
+            print(f'|...> (qinslices > qoutfiles) =>  no org to data files !!! \n \
+                 qinfiles: {qinfiles} \n \
+                 qinslices: {qinslices} \n \
+                 qoutfiles: {qoutfiles} \n \
+                ')
 
-        print(f"|... nndata formed images \n \
+        print(f'|...> nndata formed images \n \
             {onfile.qfiles(args.data_dir)} files in {args.data_dir} \n \
-        ")
+        ')
 
-    if 1: # data => tfrecords
-
-        print(f"|===> nndata generate tfrecords \n \
+    if 0: # data => tfrecords
+        print(f'|===> generate tfrecords \n \
             from {args.data_dir} into {args.tfrecord_dir} \n \
-        ")
-        if onutil.isempty(args.tfrecord_dir):
-            print(f"args.tfrecord_dir {args.tfrecord_dir} not empty !!!")
-        onrecord.folder_to_tfrecords(args.data_dir, args.tfrecord_dir)
-
-        print(f"|===> nndata tfrecords \n \
             {onfile.qfiles(args.tfrecord_dir)} files in {args.tfrecord_dir} \n \
-        ")  
+        ')
+        if (not onutil.isempty(args.tfrecord_dir)):
+            print(f'args.tfrecord_dir {args.tfrecord_dir} not empty !!!')
+        onrecord.folder_to_tfrecords(args.data_dir, args.tfrecord_dir)
+        print(f'|...> generate tfrecords \n \
+            created {onfile.qfiles(args.tfrecord_dir)} files in {args.tfrecord_dir} \n \
+        ')
 
     if 1: # net params
-
+        print(f'|===> set net parmas')
         train_res = args.train_res
 
         train_resolutions, train_featuremaps = onmoono.filter_resolutions_featuremaps(resolutions, featuremaps, train_res)
@@ -1715,11 +1800,35 @@ def nntrain(args, kwargs):
         # print(f"training_parameters {training_parameters}")
         onutil.ddict(training_parameters, "training_parameters")
 
-    if 1: # model
+    if 1: # weights
+        print(f'|===> weights \n \
+            args.weights_name: {args.weights_name} \n \
+            args.weights_path: {args.weights_path} \n \
+        ')
+        if (not os.path.exists(args.weights_path)):
+            print(f"|...> could not find weights file {args.weights_path}")
 
+            weights_id = weights[args.weights_name]
+
+            # output = weight_dir + name[i]
+            output = args.weights_path
+            url = f"https://drive.google.com/uc?id={weights_id}"
+            print(f"|...> gdown {url} to {output}")
+
+            gdown.download(url, output, quiet=False) 
+
+        else:
+            print(f"|...> args.weights_path: {args.weights_path} found")
+
+    if 0: # model
+        weights_name=None
+        if 1:
+            weights_name=args.weights_name
+
+        print("|===> model")
         model = StyleGan2(        
             resolution=args.train_res, 
-            weights=None, 
+            weights=weights_name, # weights
             impl=args.impl, 
             gpu=args.gpu, 
 
@@ -1743,67 +1852,122 @@ def nntrain(args, kwargs):
             training_parameters = training_parameters,
         )
 
-    if 0: # fit
-
+    if 0: # train
+        print("|===> train")
         # trainer = Trainer(training_parameters, name='stylegan2-ffhq')
         # trainer.train()    
-        model.fit()
+        model.fit(args)
 
-    if 0: # weights
+    if 0: # generator
 
-        if (not os.path.exists(args.weights_path)):
-            print(f"could not find weights file {args.weights_path}")
+        print("|===> instantiate generator network")
+        generator = StyleGan2Generator(weights=args.weights_name, 
+        	impl=args.impl, gpu=args.gpu)
+        #generator = model.G
 
-            weights_id = weights[args.weights_name]
-
-            # output = weight_dir + name[i]
-            output = args.weights_path
-            url = f"https://drive.google.com/uc?id={weights_id}"
-            print(f"gdown {url} to {output}")
-
-            gdown.download(url, output, quiet=False) 
-
-        else:
-            print(f"weights file {weights_path} found")
-
-    if 1: # generator
-
-        print("instantiate generator network")
-        #generator = StyleGan2Generator(weights=args.weights_name, 
-        #	impl=args.impl, gpu=args.gpu)
-        generator = model.G
-
-        print("load w average")
+        print("|...> load w average")
         wavg_path = os.path.join(args.proj_dir, "weights", 
             f"{args.weights_name}_dlatent_avg.npy")
         w_average = np.load(wavg_path)
 
-        print("generate and plot images not using truncation")
-        onplot.generate_and_plot_images(generator, seed=96, w_avg=w_average)
+        if 1:
+            print("|...> generate and plot images not using truncation")
+            onplot.gen_plot_rgbs(generator, seed=96, w_avg=w_average, truncation_psi=1.0)
 
-        print("generate and plot images using truncation 0.5")
-        onplot.generate_and_plot_images(generator, seed=96, w_avg=w_average, truncation_psi=0.5)
+        if 1:
+            print("|...> generate and plot images using truncation 0.5")
+            onplot.gen_plot_rgbs(generator, seed=96, w_avg=w_average, truncation_psi=0.5)
 
-    if 1: # generate images 	- creating random latent vector
-
-        import tqdm 
-
+    if 0: # generate images 	- creating random latent vector
+        n_images = 50
         seed = 96
+        batch_size = 4
+        latent_size = 512
+
+        print(f'|===> generate images \n \
+            n_images: {n_images} \n \
+            seed: {seed} \n \
+            batch_size: {batch_size} \n \
+            latent_size: {latent_size} \n \
+            args.results_dir (save imgs to): {args.results_dir} \n \
+        ')
+        generator = model.G
+
         rnd = np.random.RandomState(seed)
-        z = rnd.randn(4, 512).astype('float32')
+        z = rnd.randn(batch_size, latent_size).astype('float32')
 
         # running network
-        out = generator([z, None]) # _e_
+        out = generator(z) # _e_
 
         #converting image to uint8
         out_image = onrosa.convert_images_to_uint8(out, nchw_to_nhwc=True, uint8_cast=True)
 
-        onfile.generate_and_save_images(out_image.numpy(), outdir = args.results_dir)
+        onfile.gen_save_pils(out_image.numpy(), 0, outdir = args.results_dir)
 
+        from tqdm import tqdm
+        for i in tqdm(range(n_images)): # will save with {i} suffix 
+            onfile.gen_save_pils(out_image.numpy(), i, plot_fig=False, outdir = args.results_dir)
+            
+            #moving randomly in the latent space z
+            seed = i
+            rnd = np.random.RandomState(seed)
+            
+            #mofying slightly latent vector and generating new images
+            z += rnd.randn(batch_size, latent_size).astype('float32') / 40
+            out = generator(z) # _e_
+            out_image = onrosa.convert_images_to_uint8(out, nchw_to_nhwc=True, uint8_cast=True)
+
+    if 0: # save gif
+        anim_file = os.path.join(args.results_dir, 'ffhq_latent.gif')
+        patt = 'image_at_iter*.png'
+        span = 8
+        print("|===> save gif \n \
+                anim_file: {anim_file} \n \
+                span (between imgs): {span} \n \
+                patt (img name pattern): {patt (img name pattern)} \n \
+        ")
+
+        onvid.folder_to_gif(args.results_dir,dstpath=anim_file, patts=[patt],span=8,)
+
+    if 0: # Create new stylegan2
+        impl = 'cuda' # 'ref' if cuda is not available in your machine
+        gpu = True # False if tensorflow cpu is used
+        resolution = 512 # output resolution, square image power of 2
+
+        # instantiating generator network
+        generator = StyleGan2Generator(resolution=resolution, impl=impl, gpu=gpu)
+        generate_and_plot_images(generator, seed=10, w_avg=np.zeros(512,))            
+
+    if 1:
+        print("|===> latents ")     
+
+        impl = 'cuda' # 'ref' if cuda is not available in your machine
+        gpu = True # False if tensorflow cpu is used
+
+        weights_name = 'ffhq' # face model trained by Nvidia
+
+        # instantiating generator network
+        generator = StyleGan2Generator(weights=weights_name, impl=impl, gpu=gpu)
+
+        # creating random latent vector
+        seed = 96
+        rnd = np.random.RandomState(seed)
+        z = rnd.randn(4, 512).astype('float32')
+        print(f'|...> z {np.shape(z)}')
+
+        # running network
+        out = generator(z)
+
+        #converting image to uint8
+        out_image = convert_images_to_uint8(out, nchw_to_nhwc=True, uint8_cast=True)
+
+        generate_and_save_images(out_image.numpy(), 0, args.results_dir)        
+
+    if 0:
         n_images = 500
 
         for i in tqdm(range(n_images)):
-            onfile.generate_and_save_images(out_image.numpy(), i, plot_fig=False, outdir = args.results_dir)
+            generate_and_save_images(out_image.numpy(), i, args.results_dir, plot_fig=False)
             
             #moving randomly in the latent space z
             seed = i
@@ -1811,15 +1975,13 @@ def nntrain(args, kwargs):
             
             #mofying slightly latent vector and generating new images
             z += rnd.randn(4, 512).astype('float32') / 40
-            out = generator([z, None]) # _e_
-            out_image = onrosa.convert_images_to_uint8(out, nchw_to_nhwc=True, uint8_cast=True)
+            out = generator(z)
+            out_image = convert_images_to_uint8(out, nchw_to_nhwc=True, uint8_cast=True)
 
-    if 0: # save gif
-
-        anim_file = os.path.join(args.results_dir, 'ffhq_latent.gif')
+        anim_file = os.path.join(args.results_dir,'ffhq_latent.gif')
 
         with imageio.get_writer(anim_file, mode='I') as writer:
-            filenames = glob.glob(os.path.join(args.results_dir, 'image_at_iter*.png'))
+            filenames = glob.glob(os.path.join(args.results_dir,'image_at_iter*.png'))
             filenames = sorted(filenames)
             for i,filename in enumerate(filenames):
                 if i % 8 != 0:
@@ -1828,46 +1990,6 @@ def nntrain(args, kwargs):
                 writer.append_data(image)
             image = imageio.imread(filename)
             writer.append_data(image)
-
-    if 0: # project
-        args.dataorg_dir=os.path.join(args.dataorg_dir, "")
-
-        args.dataset_dir=os.path.join(args.proj_dir, "dataset")   
-        args.models_dir=os.path.join(args.proj_dir, "Models")   
-        args.results_dir=os.path.join(args.proj_dir, "Results")   
-        args.ani_dir=os.path.join(args.proj_dir, "ani")   
-
-        os.makedirs(args.data_dir, exist_ok=True) # deduped formed
-        os.makedirs(args.dataset_dir, exist_ok=True) # npy folder
-        os.makedirs(args.models_dir, exist_ok=True)
-        os.makedirs(args.results_dir, exist_ok=True)
-        os.makedirs(args.tmp_dir, exist_ok=True) # name raws
-        os.makedirs(args.ani_dir, exist_ok=True) # anis
-
-        numSteps = 1000
-        initialLearningRate = 0.1
-        initialNoiseFactor = 0.05
-        verbose = False
-
-        tfrecord_dir = args.dataset_dir
-        out_res =  256
-        shuffle_buffer_size = 10
-        batch_size = 4
-        
-        print(f"|===> nnproj\n \
-            args.proj_dir: {args.proj_dir} \n \
-            args.data_dir: {args.data_dir} \n \
-            args.dataset_dir: {args.dataset_dir} \n \
-            tfrecord_dir: {tfrecord_dir} \n \
-        ")
-
-        dataset = onmoono.get_dataset(
-            tfrecord_dir,
-            out_res,
-            shuffle_buffer_size,
-            batch_size,
-            epochs=None
-        )
 #
 #
 #
