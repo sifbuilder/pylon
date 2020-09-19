@@ -123,14 +123,11 @@ compiler_bindir_search_path = [
 
 _plugin_cache = dict()
 
-
-
 class Onpyon:
 
     @staticmethod
     def ver():
         return '0.0.0'
-
 
 class Ontree:
 
@@ -453,6 +450,14 @@ class Onutil:
         from google_drive_downloader import GoogleDriveDownloader as gdd
         print(f'|... gdownfile {link_name} to {dest}')		
         gdd.download_file_from_google_drive(file_id=link_name,dest_path=dest,unzip=True)
+
+    @staticmethod
+    def netget(urlpath, localpath, args=None):
+        basedir = os.path.dirname(urlpath)
+        baseurl = os.path.file(urlpath)
+        localdir = os.path.dirname(localpath)
+        localfile = os.path.file(localpath)
+        tofile = tf.keras.utils.get_file(f'{localpath}', origin=urlpath, extract=True)
 
     @staticmethod
     def tenzip(output_filename, source_dir, arcname=None):

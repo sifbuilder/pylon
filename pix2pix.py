@@ -126,6 +126,9 @@ onlllyas = Onlllyas()
 #   CONTEXT
 #
 #
+#   get primary params
+#   may have been superceeded in the command lne
+#
 def getap():
     cp = {
         "primecmd": 'nndanboo', # 'nncrys', #  
@@ -149,9 +152,9 @@ def getap():
 
     local_prefix = os.path.abspath('')
     try:
-            local_prefix = os.path.dirname(os.path.realpath(__file__)) # script dir
+        local_prefix = os.path.dirname(os.path.realpath(__file__)) # script dir
     except:
-            pass
+        pass
     cp["local_prefix"] = local_prefix
     
     hp = {
@@ -206,10 +209,17 @@ def getap():
         ap[key] = hp[key]
     return ap
 #
+#   get args within nnfun
+#   cp params may have been superceeded in nnfun
+#
 def getxp(cp):
 
-    yp={}
-    xp={}
+    yp={
+
+    }
+    xp={
+
+    }
     for key in cp.keys():
         xp[key] = cp[key]
 
@@ -282,7 +292,8 @@ class GAN(object):
             results_dir = './results',
             input_shape = [256,256,3],
             output_shape = [256,256,3],
-
+            visual = 1,
+            verbose = 1,
     ):
         print(f'|---> sg2pix2pix.GAN')
 
@@ -295,6 +306,9 @@ class GAN(object):
         self.ckptidx = ckptidx
         self.ckpt_dir = ckpt_dir
         self.ckpt_prefix = ckpt_prefix
+
+        self.visual = visual
+        self.verbose = verbose
 
         self.generator = self.Generator(input_shape=input_shape)
         self.discriminator = self.Discriminator(output_shape=output_shape)   
@@ -375,7 +389,7 @@ class GAN(object):
         x = last(x)
 
         return tf.keras.Model(inputs=inputs, outputs=x)
-
+    #
     # Discriminator
     #     The Discriminator is a PatchGAN.
     #     Each block in the discriminator is (Conv -> BatchNorm -> Leaky ReLU)
@@ -385,6 +399,7 @@ class GAN(object):
     #         Input image and the target image, which it should classify as real.
     #         Input image and the generated image (output of generator), which it should classify as fake.
     #         We concatenate these 2 inputs together in the code (tf.concat([inp, tar], axis=-1))
+    #
     def Discriminator(self, output_shape):
             initializer = tf.random_normal_initializer(0., 0.02)
 
@@ -409,13 +424,13 @@ class GAN(object):
                             kernel_initializer=initializer)(zero_pad2) # (bs, 30, 30, 1)
 
             return tf.keras.Model(inputs=[inp, tar], outputs=last)
-
+    #
     # discriminator loss
     #     The discriminator loss function takes 2 inputs; real images, generated images
     #     real_loss is a sigmoid cross entropy loss of the real images and an array of ones(since these are the real images)
     #     generated_loss is a sigmoid cross entropy loss of the generated images and an array of zeros(since these are the fake images)
     #     Then the total_loss is the sum of real_loss and the generated_loss
-
+    #
     def discriminator_loss(self, disc_real_output, disc_generated_output,
             loss_object = tf.keras.losses.BinaryCrossentropy(from_logits=True)
     ):
@@ -442,7 +457,9 @@ class GAN(object):
         total_gen_loss = gan_loss + (LAMBDA * l1_loss)
 
         return total_gen_loss, gan_loss, l1_loss
-            
+    #
+    #
+    #            
     # @tf.function
     def train_step(self, input_image, target, epoch, summary_writer, args=None):
 
@@ -466,7 +483,9 @@ class GAN(object):
             tf.summary.scalar('gen_gan_loss', gen_gan_loss, step=epoch)
             tf.summary.scalar('gen_l1_loss', gen_l1_loss, step=epoch)
             tf.summary.scalar('disc_loss', disc_loss, step=epoch)    
-
+    #
+    #
+    #
     def fit(self, train_ds, test_ds=None, args = None, ):
 
         max_epochs = args.max_epochs
@@ -515,7 +534,9 @@ class GAN(object):
 
         file_prefix = os.path.join(self.ckpt_dir, self.ckpt_prefix)
         self.checkpoint.save(file_prefix = file_prefix)
-
+    #
+    #
+    #
     def generate_images(self, test_dataset, epoch, args=None ):
 
         generator = self.generator
@@ -551,7 +572,9 @@ class GAN(object):
             save_image_path = os.path.join(results_dir, filename)
             onfile.rgbs_to_file(display_list, scale=1, rows=1, save_path=save_image_path)
             idx += 1
-        
+    #
+    #
+    #        
     def restore_checkpoint(self, ckptidx=None, max_to_keep=5):
 
         print(f'|===> model.restore_checkpoint \n \
@@ -574,20 +597,20 @@ class GAN(object):
         if self.ckptidx == None:
             fromcheckpoint = ckpt_manager.latest_checkpoint
             self.ckptidx = fromcheckpoint.split('-')[-1]
+            if self.verbose > 0: print(f'|... get latest ckpt: {self.ckptidx}')
         elif int(self.ckptidx) < 0:
+            if self.verbose > 0: print(f'|... (self.ckptidx < 0) get no ckpt')
             fromcheckpoint = None
             self.ckptidx = fromcheckpoint
         elif int(self.ckptidx) >= 0:
+            if self.verbose > 0: print(f'|... get ckpt {self.ckptidx}')
             fromcheckpoint = os.path.join(self.ckpt_dir, f'{self.ckpt_prefix}{self.ckptidx}')
             self.ckptidx = self.ckptidx
-        print(f'|...> model.restore_checkpoint fetch ckptidx {self.ckptidx} \n')
 
         if fromcheckpoint:
             self.checkpoint.restore(fromcheckpoint)
-            print(f'|...> model.restore_checkpoint checkpoint restored from {fromcheckpoint} !!! \n')
             return fromcheckpoint
         else:
-            print(f'|...> model.restore_checkpoint checkpoint not found')
             return None
 #
 #
@@ -607,7 +630,7 @@ def paths_to_pair(paths, height=None, width=None, exotor=1.0):
     return imgs
 #
 def path_to_decoded(path, rate=0.5):
-    print(f'|---> ********************** path_to_decoded: {path}')
+    print(f'|---> path_to_decoded: {path}')
 
     imgs = []
     img = tf.io.read_file(path) # => dtype=string
@@ -888,7 +911,6 @@ def nnzip(args, kwargs):
         assert(os.path.exists(args.dataorg_test_dir))
 
         args.ckpt_dir = args.models_dir
-        args.ckpt_prefix = os.path.join(args.ckpt_dir, "ckpt-")
 
         ''' train/test images in origin with pattern '''
         args.data_train_B_dir = os.path.join(args.data_dir, 'train_B')
@@ -1047,26 +1069,22 @@ def nnzip(args, kwargs):
 #
 def nndanboo(args, kwargs):
     
-    if onutil.incolab():
-        args = onutil.pargs(vars(args))
-        args.AUTHOR = 'lllyasviel'
-        args.PROJECT = 'nndanboo'
-        args.GITPOD = 'DanbooRegion'
-        args.DATASET = 'DanbooRegion2020'
-        xp = getxp(vars(args))
-        args = onutil.pargs(xp)
-        onutil.ddict(vars(args), 'args')
-    else:
-        args = onutil.pargs(vars(args))
-        args.AUTHOR  = 'lllyasviel'
-        args.PROJECT = 'danregion'
-        args.GITPOD = 'DanbooRegion'
-        args.DATASET = 'danregion' # 'DanbooRegion2020'
-        xp = getxp(vars(args))
-        args = onutil.pargs(xp)
-        onutil.ddict(vars(args), 'args')        
+    args = onutil.pargs(vars(args))
+    args.AUTHOR = 'lllyasviel'
+    args.GITPOD = 'DanbooRegion'
 
-    print(f"|---> nndanboo: {args.PROJECT}  \n ")
+    if onutil.incolab():
+        args.PROJECT = 'nndanboo'
+        args.DATASET = 'DanbooRegion2020'
+    else:
+        args.PROJECT = 'danregion'
+        args.DATASET = 'danregion' # 'DanbooRegion2020'
+
+    xp = getxp(vars(args))
+    args = onutil.pargs(xp)
+    onutil.ddict(vars(args), 'args')
+
+    if args.verbose > 0: print(f"|===> nndanboo: {args.PROJECT}  \n ")
 
     if 1: # tree
         # [1] https://github.com/lllyasviel/DanbooRegion
@@ -1092,7 +1110,6 @@ def nndanboo(args, kwargs):
             _glab = os.path.join(args.gdata, '../glab/', args.MNAME, args.PROJECT)
             args.ckpt_dir = os.path.normpath(os.path.join(_glab, 'Models'))
 
-        args.ckpt_prefix = os.path.normpath(os.path.join(args.ckpt_dir, "ckpt-"))
 
         args.data_dir = os.path.join(args.data_dir, '') # in project dir
         args.data_train_pict_dir = os.path.join(args.data_train_dir, 'pict')
@@ -1102,29 +1119,28 @@ def nndanboo(args, kwargs):
         args.data_test_draw_dir = os.path.join(args.data_test_dir, 'draw')
         args.data_test_predict_dir = os.path.join(args.data_test_dir, 'predict')
 
-        print(f"|---> nndanboo tree:  \n \
+        if args.verbose > 0: print(f"|---> nndanboo tree:  \n \
         cwd: {os.getcwd()} \n \
         args.proto_dir: {args.proto_dir} \n \
         args.code_dir: {args.code_dir} \n \
-        args.ckpt_dir: {args.ckpt_dir} \n \
-        args.ckpt_prefix: {args.ckpt_prefix} \n \
+        args.ckpt_dir: (ckpt-*) {args.ckpt_dir} \n \
         \n \
         args.dataorg_dir: {args.dataorg_dir}, {onfile.qfiles(args.dataorg_dir, '*.png')}\n \
         args.dataorg_train_dir: {args.dataorg_train_dir}, {onfile.qfiles(args.dataorg_train_dir, '*.png')}\n \
         args.dataorg_test_dir: {args.dataorg_test_dir}, {onfile.qfiles(args.dataorg_test_dir, '*.png')}\n \
         \n \
         args.data_dir: {args.data_dir}, \n \
-        args.data_train_dir: {args.data_train_dir}, {onfile.qfiles(args.data_train_dir, '*.png')}\n \
-        args.data_train_dir (images): {args.data_train_dir}, {onfile.qfiles(args.data_train_dir, '*.image.png')} \n \
-        args.data_train_dir (regions): {args.data_train_dir}, {onfile.qfiles(args.data_train_dir, '*.region.png')} \n \
-        args.data_train_dir (skels): {args.data_train_dir}, {onfile.qfiles(args.data_train_dir, '*.skeleton.png')} \n \
-        args.data_test_dir: {args.data_test_dir}, {onfile.qfiles(args.data_test_dir, '*.png')}\n \
-        args.data_val_dir: {args.data_val_dir}, {onfile.qfiles(args.data_val_dir, '*.png')}\n \
+        args.data_train_dir: (png.s) {args.data_train_dir}, {onfile.qfiles(args.data_train_dir, '*.png')}\n \
+        args.data_train_dir (image.s): {args.data_train_dir}, {onfile.qfiles(args.data_train_dir, '*.image.png')} \n \
+        args.data_train_dir (region.s): {args.data_train_dir}, {onfile.qfiles(args.data_train_dir, '*.region.png')} \n \
+        args.data_train_dir (skel.s): {args.data_train_dir}, {onfile.qfiles(args.data_train_dir, '*.skeleton.png')} \n \
+        args.data_test_dir (png.s): {args.data_test_dir}, {onfile.qfiles(args.data_test_dir, '*.png')}\n \
+        args.data_val_dir (png.s): {args.data_val_dir}, {onfile.qfiles(args.data_val_dir, '*.png')}\n \
         ")
 
         args.dataorg_dir = os.path.join(args.dataorg_dir, '')
         if not os.path.exists(args.dataorg_dir):
-            print(f'org data missing \n \
+            if args.verbose > 0: print(f'org data missing \n \
                 the org data folder: {args.dataorg_dir} was not found !!! \n \
                 set args.dataorg_dir if needed and \n \
                 download the dataset following instructions in \n \
@@ -1167,7 +1183,7 @@ def nndanboo(args, kwargs):
         args.gpu = 1 # _e_
         args.input_shape = [args.height, args.width, args.input_channels]		
 
-    print(f"|---> nndanboo config:  \n \
+    if args.verbose > 0: print(f"|---> nndanboo config:  \n \
         args.show_size: {args.show_size}, \n \
         args.batch_size: {args.batch_size}, \n \
         args.gpu: {args.gpu}, \n \
@@ -1177,28 +1193,35 @@ def nndanboo(args, kwargs):
         args.batch_size: {args.batch_size}, \n \
         args.input_shape: {args.input_shape}, \n \
     ")
-
+    #
+    #
     if 1: # git
         onutil.get_git(args.AUTHOR, args.GITPOD, args.code_dir)
-
+    #
+    #
     assert os.path.exists(args.code_dir), "code_dir not found"        
     os.chdir(args.code_dir) # _e_ not std
+    #
+    #
+    # visualize region image with image color map
+    #
+    if args.visual > 1: 
 
-    if args.visual > 1: # visualize region image with image color map
-
-        if 0:
+        if 0: # py command
             cmd = f"python visualize.py ./X.image.png ./X.region.png"
             print("cmd %s" %cmd)
             os.system(cmd)
-        else:
+        else: # cv2
             color_map = cv2.imread('./X.image.png') # _e_
             region_map = cv2.imread('./X.region.png')
             cv2.imshow('vis', onlllyas.vis(region_map, color_map))
             cv2.waitKey(0)
-
+    #
+    #
+    #
     if 1: # org to _train_ data 
 
-        print(f'|---> nndanregion: org => data train \n \
+        if args.verbose > 0: print(f'|---> nndanregion: org => data train \n \
             \n \
             org image: {onfile.qfiles(args.dataorg_train_dir, "*.png")} \n \
             train: {onfile.qfiles(args.data_train_pict_dir, "*.png")} \n \
@@ -1216,7 +1239,7 @@ def nndanboo(args, kwargs):
         qinfiles = onfile.qfiles(args.input_folder, f'*{args.file_extension}')
         qoutfiles = onfile.qfiles(args.output_folder)
 
-        print(f"|---> nndanregion train copy: {args.process_type} \n \
+        if args.verbose > 0: print(f"|---> nndanregion train copy: {args.process_type} \n \
             {args.input_folder} (q: {qinfiles})  \n \
             \t ==> {args.output_folder} (q: {qoutfiles}) \n \
         ")
@@ -1230,10 +1253,12 @@ def nndanboo(args, kwargs):
             onset.processFolder(args) # copy inputs to train
         else:
             print(f'|... train no processFolder !!!!. files already there ')
-
+    #
+    #
+    #
     if 1: # org to _test_ data 
 
-        print(f'|---> nndanregion org test to data q: \n \
+        if args.verbose > 0: print(f'|---> nndanregion org test to data q: \n \
             org image: {onfile.qfiles(args.dataorg_test_dir, "*.png")} \n \
             test re: {onfile.qfiles(args.data_test_pict_dir, "*.png")} \n \
         ')
@@ -1261,7 +1286,9 @@ def nndanboo(args, kwargs):
             onset.processFolder(args) # copy inputs to test
         else:
             print(f'|... test no processFolder !!!!. files already there ')
-
+    #
+    #
+    #
     if 0: # probe images to skeletons
 
         basename = 'region_test.png'
@@ -1284,10 +1311,12 @@ def nndanboo(args, kwargs):
             region_map = cv2.imread(imgpath)
             cv2.imshow(basename, onlllyas.get_skeleton(region_map, filterstrength=1.0))
             cv2.waitKey(0)
-
+    #
+    #
+    #
     if 1: # (train) data to skeletons
 
-        print(f'|===> skeletonize_all')
+        if args.verbose > 0: print(f'|===> skeletonize_all')
 
         linpatts = ['*.region.png']
         fromdir = args.data_train_pict_dir
@@ -1300,7 +1329,7 @@ def nndanboo(args, kwargs):
         
         filterstrengths = [5.0] # {1.0,5.0}
 
-        print(f'|...>  skeletonize_all \n \
+        if args.verbose > 0: print(f'|...>  skeletonize_all \n \
             from {fromdir} ({qinfiles}) \n \
             to {todir} ({qoutfiles}) \n \
             to filterstrengths: {filterstrengths} \n \
@@ -1342,14 +1371,16 @@ def nndanboo(args, kwargs):
 
             else:
                 print(f'|... no process. out files {qoutfiles} in')
-
+    #
+    #
+    #
     if 0: # skeletom to regions show
 
         basename = 'danskel.jpg'
         skeleton_path = os.path.join(args.code_dir, basename)
         assert os.path.exists(skeleton_path), f"skeleton_path {skeleton_path} does not exist"
 
-        print(f'|---> skeletom to regions \n \
+        if args.verbose > 0: print(f'|---> skeletom to regions \n \
             skeleton_path: {skeleton_path} \n \
         ')
 
@@ -1363,10 +1394,12 @@ def nndanboo(args, kwargs):
         else:
             cv2.imshow(basename, img)
             cv2.waitKey(0)
-
+    #
+    #
+    #
     if 1: # model
 
-        if args.verbose: print(f'|===> model:   \n \
+        if args.verbose > 0: print(f'|===> model:   \n \
             models_dir = {args.models_dir},\n \
             logs_dir = {args.logs_dir},\n \
             results_dir = {args.results_dir},\n \
@@ -1381,13 +1414,13 @@ def nndanboo(args, kwargs):
             results_dir = args.results_dir,
             ckpt_dir = args.ckpt_dir,
             ckpt_prefix = args.ckpt_prefix,
-            ckptidx = -1,   # ****
+            ckptidx = None  , # -1 : get no ckpt, None for latest
             input_shape = args.input_shape,
             output_shape = args.input_shape,
         )
-    
+    #
     # 3. segment
-    
+    #
     if 1:	# python segment.py ./emilia.jpg
 
         path = os.path.join(args.code_dir, 'emilia.jpg')
@@ -1398,23 +1431,28 @@ def nndanboo(args, kwargs):
         basename = os.path.basename(path)
         assert os.path.exists(path), f"path {path} does not exist"
 
-        print(f'|---> segment \n \
+        if args.verbose: print(f'|---> segment \n \
             basename: {basename} \n \
             skeleton_path: {path} \n \
         ')
 
-        img = cv2.imread(path)
-        img = onlllyas.skeleton_to_regions(img)
-        img = onlllyas.min_resize(img, 512)
-        if 0: onplot.cv_img(img, title=f'regions {basename}')
+        # config
+        #
+        img1_max_size = 512
+        img2_max_size = 512
+
+        img1 = cv2.imread(path)
+        img1 = onlllyas.skeleton_to_regions(img1)
+        img1 = onlllyas.min_resize(img1, img1_max_size)
+        if 0: onplot.cv_img(img1, title=f'regions {basename}')
 
         #raw_img = cv2.imread(path, cv2.IMREAD_GRAYSCALE) # go_srcnn
         raw_img = cv2.imread(path) # go_srcnn
-        raw_img = onlllyas.min_resize(raw_img, 512)
+        raw_img = onlllyas.min_resize(raw_img, img1_max_size)
         if 0: onplot.cv_img(raw_img, title=f'raw_img {basename} ')
 
         #raw_img = raw_img.clip(0, 255)
-        #raw_img = raw_img.astype(np.uint8) # (512, 512, 3)
+        #raw_img = raw_img.astype(np.uint8) # (img1_max_size, img1_max_size, 3)
         #if 0: onplot.pil_show_rgb(raw_img)
 
         #pads = 7
@@ -1422,20 +1460,19 @@ def nndanboo(args, kwargs):
         #raw_img = tf.pad(raw_img / 255.0, [[0, 0], [pads, pads], [pads, pads], [0, 0]], 'REFLECT')
         #if 1: onplot.pil_show_nba(raw_img)
         
-        #img = model.generator(raw_img, training=True)       
-        #img = img[:, pads * 2:-pads * 2, pads * 2:-pads * 2, :][:, 1:-1, 1:-1, :] * 255.0
+        #img1 = model.generator(raw_img, training=True)       
+        #img1 = img1[:, pads * 2:-pads * 2, pads * 2:-pads * 2, :][:, 1:-1, 1:-1, :] * 255.0
 
-        img = img[np.newaxis,:,:,:]
-        img = model.generator(img, training=True)
-        img_rgb = onformat.nnba_to_rgb(img)
-        if 1: onplot.cv_img(img_rgb, title=f'gen rgb img')            
+        img1 = img1[np.newaxis,:,:,:]
+        img1 = model.generator(img1, training=True)
+        img_rgb = onformat.nnba_to_rgb(img1)
+        if 1: onplot.cv_img(img_rgb, title=f'gen rgb img1')            
 
-        img_2048 = onlllyas.min_resize(raw_img, 2048)        
-        if 0: onplot.cv_img(img_2048, title=f'img_2048')
+        img2 = onlllyas.min_resize(raw_img, img2_max_size)        
+        if 0: onplot.cv_img(img2, title=f'img2')
         
         transposed = onlllyas.go_transposed_vector(onlllyas.mk_resize(raw_img, 64))
-        height = onlllyas.d_resize(transposed, img_2048.shape) * 255.0
-        #height = onlllyas.d_resize(go_transposed_vector(onlllyas.mk_resize(raw_img, 64)), img_2048.shape) * 255.0
+        height = onlllyas.d_resize(transposed, img2.shape) * 255.0
 
         final_height = height.copy()
 
@@ -1443,7 +1480,7 @@ def nndanboo(args, kwargs):
         height = height.clip(0, 255).astype(np.uint8)
         if 1: onplot.cv_img(height, title=f'height')
 
-        marker = height.copy() # (2048, 2048, 3)
+        marker = height.copy() # (img2_max_size, img2_max_size, 3)
         marker[marker > 135] = 255
         marker[marker < 255] = 0
 
@@ -1471,15 +1508,15 @@ def nndanboo(args, kwargs):
         small_marker[big_marker > 127] = 0
         fin_labels, nil = label(big_marker / 255)
         fin_labels = up_fill(onlllyas.get_fill(small_marker), fin_labels)
-        water = cv2.watershed(img_2048.clip(0, 255).astype(np.uint8), fin_labels.astype(np.int32)) + 1
+        water = cv2.watershed(img2.clip(0, 255).astype(np.uint8), fin_labels.astype(np.int32)) + 1
         water = onlllyas.thinning(water)
         all_region_indices = onlllyas.find_all(water)
-        regions = np.zeros_like(img_2048, dtype=np.uint8)
+        regions = np.zeros_like(img2, dtype=np.uint8)
         for region_indices in all_region_indices:
             regions[region_indices] = np.random.randint(low=0, high=255, size=(3,)).clip(0, 255).astype(np.uint8)
-        result = np.zeros_like(img_2048, dtype=np.uint8)
+        result = np.zeros_like(img2, dtype=np.uint8)
         for region_indices in all_region_indices:
-            result[region_indices] = np.median(img_2048[region_indices], axis=0)
+            result[region_indices] = np.median(img2[region_indices], axis=0)
         
         skeleton = final_height.clip(0, 255).astype(np.uint8)
         region = regions.clip(0, 255).astype(np.uint8)
@@ -2312,7 +2349,6 @@ def nnleonardo(args, kwargs):
         assert(os.path.exists(args.dataorg_test_dir))
 
         args.ckpt_dir = args.models_dir
-        args.ckpt_prefix = os.path.join(args.ckpt_dir, "ckpt-")
 
         ''' train/test images in origin with pattern '''
         args.data_train_B_dir = os.path.join(args.data_dir, 'train_B')
@@ -2709,7 +2745,6 @@ def nnfacades(args, kwargs):
 
     if 1: # tree
         args.ckpt_dir = args.models_dir
-        args.ckpt_prefix = os.path.join(args.ckpt_dir, "ckpt-")
 
         os.makedirs(args.models_dir, exist_ok=True)
         os.makedirs(args.logs_dir, exist_ok=True)
@@ -2867,7 +2902,6 @@ def nngoya(args, kwargs):
 
     if 1: # tree
         ckpt_dir = os.path.join(args.proto_dir, 'leonardo', 'Models')
-        ckpt_prefix = os.path.join(ckpt_dir, "ckpt-")
 
         os.makedirs(args.data_dir, exist_ok=True)
         os.makedirs(args.models_dir, exist_ok=True)

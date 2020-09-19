@@ -81,11 +81,11 @@ tf.get_logger().setLevel('ERROR')
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 print(f'|===> {tf.__version__}')
-
-#   ******************
+#
+#
 #   FUNS
 #
-#   ******************
+#
 try:
     # check if base.Onpyon is defined
     var = Onpyon()
@@ -109,13 +109,11 @@ onrecord = Onrecord()
 ontree = Ontree()
 onvgg = Onvgg()
 onlllyas = Onlllyas()
-
-
-#   *******************
+#
+#
 #   CONTEXT
 #
-#   *******************
-
+#
 def getap():
     cp = {
         "primecmd": 'nnjoin',
@@ -168,8 +166,7 @@ def getap():
     for key in hp.keys():
         ap[key] = hp[key]
     return ap
-
-
+#
 def getxp(cp):
 
     yp = {
@@ -193,59 +190,53 @@ def getxp(cp):
         xp[key] = yp[key]
    
     return xp
-
-
-#   ******************
+#
+#
 #   FUNS 
 #
-#   ***************
-
+#
 def read_file(path):
     """Read contents of file at given path as bytes."""
     with open(path, 'rb') as f:
         return f.read()
-
-
+#
 def write_file(path, data):
     """Write data bytes to file at given path."""
     with open(path, 'wb') as f:
         f.write(data)
-
-
+#
 def folder_to_paths(folder, format=None):
     paths=[]
     if not format:
         format="*"
     paths = glob.glob(os.path.join(folder, format))
     return paths
-
+#
 def path_to_filename(path):
     name, _ = os.path.splitext(os.path.basename(path))
     return name
-
+#
 def name_to_basename(name):
     base, _ = os.path.splitext(name)
     return base
-
+#
 def name_to_extension(name):
     base, ext = os.path.splitext(name)
     return ext
-
+#
 def path_to_basename(path):
     base, _ = os.path.splitext(path_to_filename(path))
     return base
-
+#
 def path_to_extension(path):
     ext = os.path.splitext(path)[-1]
     return ext
-
-
-#   ******************
+#
+#
 #   CMDS
 #
-#   ****************
-
-#   *******************
+#
+#
 #   nnimg
 #
 def nnjoin(args, kwargs):
@@ -263,6 +254,13 @@ def nnjoin(args, kwargs):
             args.pyons_dir: {args.pyons_dir} \n \
         ")
 
+    # delete notebooks
+    nbs = set(folder_to_paths(args.pyons_dir, '*.ipynb'))
+    if 0:
+        for path in nbs:
+            basename = path_to_basename(path)
+            if basename.endswith(".ipynb"):
+                os.remove(path)
 
     paths = set(folder_to_paths(args.pyons_dir, '*.py'))
     paths = paths - set(folder_to_paths(args.pyons_dir, 'base*.py'))
@@ -287,6 +285,7 @@ def nnjoin(args, kwargs):
 
         basename = path_to_basename(path)
 
+
         tmpextension = 'py' # path_to_extension(path)
         newextension = 'ipynb' # path_to_extension(path)
 
@@ -304,7 +303,6 @@ def nnjoin(args, kwargs):
         ")        
 
         alllines = ''
-
 
         if 0: # do not add base
             with open(base_path) as infile:
@@ -368,16 +366,15 @@ def nnjoin(args, kwargs):
             if os.path.exists(newfile_path):
                 os.remove(newfile_path)
             os.rename(interfile_path, newfile_path) # interfile_path => newfile_path
-
-
-     #   ******************
+#
+#
 #
 #   MAIN
 #
-#   ******************
+#
 def main():
 
-    parser = argparse.ArgumentParser(description='''Run 'python %(prog)s <subcommand> --help' for subcommand help.''')
+    parser = argparse.ArgumentParser(description='Run "python %(prog)s <subcommand> --help" for subcommand help.')
 
     onutil.dodrive()
     ap = getap()
@@ -421,11 +418,10 @@ def main():
         if (subcmd == name):
             print(f'|===> call {name}')
             globals()[name](args, kwargs) # pass args to nn cmd
-
-#---------------------------------------------------------------
+#
+#
+#
 # python base/base.py nninfo
 if __name__ == "__main__":
     print("|===>", __name__)
     main()
-
-#---------------------------------------------------------------
